@@ -23,7 +23,7 @@ export const telegramOutbound: ChannelOutboundAdapter = {
   chunker: markdownToTelegramHtmlChunks,
   chunkerMode: "markdown",
   textChunkLimit: 4000,
-  sendText: async ({ to, text, accountId, deps, replyToId, threadId }) => {
+  sendText: async ({ to, text, accountId, deps, replyToId, threadId, linkPreview }) => {
     const send = deps?.sendTelegram ?? sendMessageTelegram;
     const replyToMessageId = parseReplyToMessageId(replyToId);
     const messageThreadId = parseThreadId(threadId);
@@ -32,11 +32,21 @@ export const telegramOutbound: ChannelOutboundAdapter = {
       textMode: "html",
       messageThreadId,
       replyToMessageId,
+      linkPreview,
       accountId: accountId ?? undefined,
     });
     return { channel: "telegram", ...result };
   },
-  sendMedia: async ({ to, text, mediaUrl, accountId, deps, replyToId, threadId }) => {
+  sendMedia: async ({
+    to,
+    text,
+    mediaUrl,
+    accountId,
+    deps,
+    replyToId,
+    threadId,
+    linkPreview,
+  }) => {
     const send = deps?.sendTelegram ?? sendMessageTelegram;
     const replyToMessageId = parseReplyToMessageId(replyToId);
     const messageThreadId = parseThreadId(threadId);
@@ -46,6 +56,7 @@ export const telegramOutbound: ChannelOutboundAdapter = {
       textMode: "html",
       messageThreadId,
       replyToMessageId,
+      linkPreview,
       accountId: accountId ?? undefined,
     });
     return { channel: "telegram", ...result };

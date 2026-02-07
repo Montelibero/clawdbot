@@ -208,6 +208,14 @@ function readBooleanParam(params: Record<string, unknown>, key: string): boolean
   return undefined;
 }
 
+function resolveLinkPreviewParam(params: Record<string, unknown>): boolean | undefined {
+  const disableWebPreview =
+    readBooleanParam(params, "disableWebPagePreview") ??
+    readBooleanParam(params, "disable_web_page_preview");
+  if (disableWebPreview != null) return !disableWebPreview;
+  return readBooleanParam(params, "linkPreview");
+}
+
 function resolveSlackAutoThreadId(params: {
   to: string;
   toolContext?: ChannelThreadingToolContext;
@@ -671,6 +679,10 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
   const mediaUrl = readStringParam(params, "media", { trim: false });
   const gifPlayback = readBooleanParam(params, "gifPlayback") ?? false;
   const bestEffort = readBooleanParam(params, "bestEffort");
+  const linkPreview = resolveLinkPreviewParam(params);
+  if (linkPreview != null) {
+    params.linkPreview = linkPreview;
+  }
 
   const replyToId = readStringParam(params, "replyTo");
   const threadId = readStringParam(params, "threadId");
@@ -731,6 +743,7 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
     mediaUrls: mergedMediaUrls.length ? mergedMediaUrls : undefined,
     gifPlayback,
     bestEffort: bestEffort ?? undefined,
+    linkPreview: linkPreview ?? undefined,
   });
 
   return {

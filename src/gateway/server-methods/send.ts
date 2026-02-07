@@ -64,6 +64,7 @@ export const sendHandlers: GatewayRequestHandlers = {
       mediaUrl?: string;
       mediaUrls?: string[];
       gifPlayback?: boolean;
+      linkPreview?: boolean;
       channel?: string;
       accountId?: string;
       sessionKey?: string;
@@ -174,6 +175,7 @@ export const sendHandlers: GatewayRequestHandlers = {
           accountId,
           payloads: [{ text: message, mediaUrl: request.mediaUrl, mediaUrls }],
           gifPlayback: request.gifPlayback,
+          linkPreview: request.linkPreview,
           deps: outboundDeps,
           mirror: providedSessionKey
             ? {

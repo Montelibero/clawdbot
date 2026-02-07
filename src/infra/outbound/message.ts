@@ -40,6 +40,7 @@ type MessageSendParams = {
   accountId?: string;
   dryRun?: boolean;
   bestEffort?: boolean;
+  linkPreview?: boolean;
   deps?: OutboundSendDeps;
   cfg?: ClawdbotConfig;
   gateway?: MessageGatewayOptions;
@@ -166,6 +167,7 @@ export async function sendMessage(params: MessageSendParams): Promise<MessageSen
       accountId: params.accountId,
       payloads: normalizedPayloads,
       gifPlayback: params.gifPlayback,
+      linkPreview: params.linkPreview,
       deps: params.deps,
       bestEffort: params.bestEffort,
       abortSignal: params.abortSignal,
@@ -189,20 +191,21 @@ export async function sendMessage(params: MessageSendParams): Promise<MessageSen
   }
 
   const gateway = resolveGatewayOptions(params.gateway);
-  const result = await callGateway<{ messageId: string }>({
-    url: gateway.url,
-    token: gateway.token,
-    method: "send",
-    params: {
-      to: params.to,
-      message: params.content,
-      mediaUrl: params.mediaUrl,
-      mediaUrls: mirrorMediaUrls.length ? mirrorMediaUrls : params.mediaUrls,
-      gifPlayback: params.gifPlayback,
-      accountId: params.accountId,
-      channel,
-      sessionKey: params.mirror?.sessionKey,
-      idempotencyKey: params.idempotencyKey ?? randomIdempotencyKey(),
+    const result = await callGateway<{ messageId: string }>({
+      url: gateway.url,
+      token: gateway.token,
+      method: "send",
+      params: {
+        to: params.to,
+        message: params.content,
+        mediaUrl: params.mediaUrl,
+        mediaUrls: mirrorMediaUrls.length ? mirrorMediaUrls : params.mediaUrls,
+        gifPlayback: params.gifPlayback,
+        linkPreview: params.linkPreview,
+        accountId: params.accountId,
+        channel,
+        sessionKey: params.mirror?.sessionKey,
+        idempotencyKey: params.idempotencyKey ?? randomIdempotencyKey(),
     },
     timeoutMs: gateway.timeoutMs,
     clientName: gateway.clientName,

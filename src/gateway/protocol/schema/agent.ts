@@ -20,6 +20,7 @@ export const SendParamsSchema = Type.Object(
     mediaUrl: Type.Optional(Type.String()),
     mediaUrls: Type.Optional(Type.Array(Type.String())),
     gifPlayback: Type.Optional(Type.Boolean()),
+    linkPreview: Type.Optional(Type.Boolean()),
     channel: Type.Optional(Type.String()),
     accountId: Type.Optional(Type.String()),
     /** Optional session key for mirroring delivered output back into the transcript. */

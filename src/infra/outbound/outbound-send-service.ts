@@ -73,6 +73,7 @@ export async function executeSendAction(params: {
   mediaUrls?: string[];
   gifPlayback?: boolean;
   bestEffort?: boolean;
+  linkPreview?: boolean;
 }): Promise<{
   handledBy: "plugin" | "core";
   payload: unknown;
@@ -125,6 +126,7 @@ export async function executeSendAction(params: {
     gifPlayback: params.gifPlayback,
     dryRun: params.ctx.dryRun,
     bestEffort: params.bestEffort ?? undefined,
+    linkPreview: params.linkPreview,
     deps: params.ctx.deps,
     gateway: params.ctx.gateway,
     mirror: params.ctx.mirror,

@@ -58,6 +58,21 @@ function buildSendSchema(options: { includeButtons: boolean; includeCards: boole
     filePath: Type.Optional(Type.String()),
     replyTo: Type.Optional(Type.String()),
     threadId: Type.Optional(Type.String()),
+    linkPreview: Type.Optional(
+      Type.Boolean({
+        description: "Controls link previews when supported (true enables previews).",
+      }),
+    ),
+    disableWebPagePreview: Type.Optional(
+      Type.Boolean({
+        description: "Alias to disable link previews when supported.",
+      }),
+    ),
+    disable_web_page_preview: Type.Optional(
+      Type.Boolean({
+        description: "Alias for disableWebPagePreview (telegram-style).",
+      }),
+    ),
     asVoice: Type.Optional(Type.Boolean()),
     bestEffort: Type.Optional(Type.Boolean()),
     gifPlayback: Type.Optional(Type.Boolean()),
