@@ -35,8 +35,8 @@ RUN pnpm build
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV CLAWDBOT_PREFER_PNPM=1
 ENV CI=true
-RUN pnpm --filter ./ui... install --prod --no-frozen-lockfile
-RUN pnpm --filter ./ui... run build
+RUN pnpm -C ui install --prod --no-frozen-lockfile --ignore-workspace
+RUN pnpm -C ui run build --ignore-workspace
 
 ENV NODE_ENV=production
 
