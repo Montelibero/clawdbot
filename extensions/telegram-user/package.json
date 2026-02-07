@@ -1,0 +1,33 @@
+{
+  "name": "@clawdbot/telegram-user",
+  "version": "2026.2.7",
+  "type": "module",
+  "description": "Clawdbot Telegram user (MTProto) channel plugin",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "telegram-user",
+      "label": "Telegram User",
+      "selectionLabel": "Telegram User (MTProto)",
+      "docsPath": "/channels/telegram",
+      "docsLabel": "telegram",
+      "blurb": "Telegram user account via MTProto (GramJS)",
+      "order": 75,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@clawdbot/telegram-user",
+      "localPath": "extensions/telegram-user",
+      "defaultChoice": "npm"
+    }
+  },
+  "dependencies": {
+    "telegram": "2.26.22",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "clawdbot": "workspace:*"
+  }
+}
