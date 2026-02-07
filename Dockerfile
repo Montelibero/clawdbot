@@ -36,7 +36,7 @@ RUN pnpm build
 ENV CLAWDBOT_PREFER_PNPM=1
 ENV CI=true
 RUN pnpm -C ui install --prod --no-frozen-lockfile --ignore-workspace
-RUN pnpm -C ui run build --ignore-workspace
+RUN pnpm -C ui run build
 
 ENV NODE_ENV=production
 
