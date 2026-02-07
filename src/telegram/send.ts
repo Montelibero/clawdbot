@@ -231,7 +231,7 @@ export async function sendMessageTelegram(
 
   // Resolve link preview setting from config (default: enabled).
   const linkPreviewEnabled =
-    typeof opts.linkPreview === "boolean" ? opts.linkPreview : account.config.linkPreview ?? true;
+    typeof opts.linkPreview === "boolean" ? opts.linkPreview : account.config.linkPreview ?? false;
   const linkPreviewOptions = linkPreviewEnabled ? undefined : { is_disabled: true };
 
   const sendTelegramText = async (

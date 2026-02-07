@@ -329,7 +329,7 @@ async function sendTelegramText(
     messageThreadId: opts?.messageThreadId,
   });
   // Add link_preview_options when link preview is disabled.
-  const linkPreviewEnabled = opts?.linkPreview ?? true;
+  const linkPreviewEnabled = opts?.linkPreview ?? false;
   const linkPreviewOptions = linkPreviewEnabled ? undefined : { is_disabled: true };
   const textMode = opts?.textMode ?? "markdown";
   const htmlText = textMode === "html" ? text : markdownToTelegramHtml(text);
