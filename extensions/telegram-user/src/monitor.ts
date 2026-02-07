@@ -30,6 +30,44 @@ function getChatType(peer: unknown): "direct" | "group" | "channel" {
   return "direct";
 }
 
+function resolveThreadSessionKeys(params: {
+  baseSessionKey: string;
+  threadId?: string | null;
+  parentSessionKey?: string;
+  useSuffix?: boolean;
+}): { sessionKey: string; parentSessionKey?: string } {
+  const threadId = (params.threadId ?? "").trim();
+  if (!threadId) {
+    return { sessionKey: params.baseSessionKey, parentSessionKey: undefined };
+  }
+  const useSuffix = params.useSuffix ?? true;
+  const sessionKey = useSuffix
+    ? `${params.baseSessionKey}:thread:${threadId}`
+    : params.baseSessionKey;
+  return { sessionKey, parentSessionKey: params.parentSessionKey };
+}
+
+function resolveMessageThreadId(msg: Api.Message): string | undefined {
+  const replyTo = (msg as { replyTo?: unknown }).replyTo as
+    | {
+        replyToTopId?: number;
+        topMsgId?: number;
+        replyToMsgId?: number;
+        forumTopic?: { id?: number; topMessage?: number };
+      }
+    | undefined;
+  const candidate =
+    replyTo?.replyToTopId ??
+    replyTo?.topMsgId ??
+    replyTo?.forumTopic?.topMessage ??
+    replyTo?.forumTopic?.id ??
+    replyTo?.replyToMsgId;
+  if (typeof candidate === "number" && Number.isFinite(candidate)) {
+    return String(Math.trunc(candidate));
+  }
+  return undefined;
+}
+
 export async function monitorTelegramUserProvider(
   opts: TelegramUserMonitorOptions,
 ): Promise<{ stop: () => void }> {
@@ -125,6 +163,11 @@ export async function monitorTelegramUserProvider(
       accountId: account.accountId,
       peer,
     });
+    const threadId = resolveMessageThreadId(msg);
+    const threadKeys = resolveThreadSessionKeys({
+      baseSessionKey: route.sessionKey,
+      threadId,
+    });
 
     const storePath = core.channel.session.resolveStorePath(cfg.session?.store, {
       agentId: route.agentId,
@@ -151,7 +194,7 @@ export async function monitorTelegramUserProvider(
       CommandBody: rawBody,
       From: `telegram-user:${senderId}`,
       To: `telegram-user:${chatId}`,
-      SessionKey: route.sessionKey,
+      SessionKey: threadKeys.sessionKey,
       AccountId: route.accountId,
       ChatType: chatType,
       ConversationLabel: senderLabel,
@@ -163,11 +206,12 @@ export async function monitorTelegramUserProvider(
       MessageSid: String(msg.id),
       OriginatingChannel: "telegram-user",
       OriginatingTo: `telegram-user:${chatId}`,
+      MessageThreadId: threadId,
     });
 
     await core.channel.session.recordInboundSession({
       storePath,
-      sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
+      sessionKey: ctxPayload.SessionKey ?? threadKeys.sessionKey,
       ctx: ctxPayload,
       onRecordError: (err) => {
         logger?.error?.(`telegram-user: failed updating session meta: ${String(err)}`);
