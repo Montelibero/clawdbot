@@ -9,7 +9,7 @@ RUN corepack enable
 # Install uv/uvx (Astral) + webhook.site CLI
 ENV UV_INSTALL_DIR=/usr/local/bin
 RUN curl -fsSL https://astral.sh/uv/install.sh | sh && \
-    npm install -g @webhooksite/whcli
+    npm install -g @webhooksite/cli
 
 WORKDIR /app
 
