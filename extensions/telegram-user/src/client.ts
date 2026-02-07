@@ -22,6 +22,7 @@ export async function getTelegramUserClient(
   if (!account.apiId || !account.apiHash) {
     throw new Error("telegram-user missing apiId/apiHash (set channels['telegram-user'].apiId/apiHash)");
   }
+  const botToken = account.botToken?.trim();
   const sessionFile = account.sessionFile?.trim();
   if (!sessionFile) {
     throw new Error("telegram-user missing sessionFile");
@@ -35,7 +36,11 @@ export async function getTelegramUserClient(
   const client = new TelegramClient(session, account.apiId, account.apiHash, {
     connectionRetries: 5,
   });
-  await client.connect();
+  if (botToken) {
+    await client.start({ botAuthToken: botToken });
+  } else {
+    await client.connect();
+  }
   const entry: ClientEntry = {
     client,
     sessionFile,

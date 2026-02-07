@@ -15,6 +15,7 @@ const telegramUserAccountSchema = z.object({
   enabled: z.boolean().optional(),
   apiId: z.number().optional(),
   apiHash: z.string().optional(),
+  botToken: z.string().optional(),
   sessionFile: z.string().optional(),
   sessionString: z.string().optional(),
   dmPolicy: z.enum(["pairing", "allowlist", "open", "disabled"]).optional(),

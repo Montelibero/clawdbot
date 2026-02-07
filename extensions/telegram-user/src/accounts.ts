@@ -58,6 +58,12 @@ function resolveApiHash(value?: string): string | undefined {
   return env || undefined;
 }
 
+function resolveBotToken(value?: string): string | undefined {
+  if (value?.trim()) return value.trim();
+  const env = process.env.TELEGRAM_USER_BOT_TOKEN?.trim();
+  return env || undefined;
+}
+
 export function resolveTelegramUserAccount(params: {
   cfg: ClawdbotConfig;
   accountId?: string | null;
@@ -70,6 +76,7 @@ export function resolveTelegramUserAccount(params: {
   const enabled = baseEnabled && accountEnabled;
   const apiId = resolveApiId(merged.apiId);
   const apiHash = resolveApiHash(merged.apiHash);
+  const botToken = resolveBotToken(merged.botToken);
   const sessionFile = merged.sessionFile?.trim() || resolveDefaultSessionFile(accountId);
   return {
     accountId,
@@ -77,6 +84,7 @@ export function resolveTelegramUserAccount(params: {
     enabled,
     apiId,
     apiHash,
+    botToken,
     sessionFile,
     sessionString: merged.sessionString?.trim() || undefined,
     config: merged,

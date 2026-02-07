@@ -12,6 +12,7 @@ export type TelegramUserAccountConfig = {
   enabled?: boolean;
   apiId?: number;
   apiHash?: string;
+  botToken?: string;
   sessionFile?: string;
   sessionString?: string;
   dmPolicy?: "pairing" | "allowlist" | "open" | "disabled";
@@ -33,6 +34,7 @@ export type ResolvedTelegramUserAccount = {
   enabled: boolean;
   apiId?: number;
   apiHash?: string;
+  botToken?: string;
   sessionFile?: string;
   sessionString?: string;
   config: TelegramUserAccountConfig;

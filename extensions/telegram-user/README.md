@@ -11,6 +11,8 @@ This plugin connects a **Telegram user account** via MTProto (GramJS). It is sep
       enabled: true,
       apiId: 123456,
       apiHash: "YOUR_API_HASH",
+      // Optional: use bot token (MTProto bot auth)
+      // botToken: "123456:ABCDEF",
       // Optional: override session storage path
       // sessionFile: "/home/node/.clawdbot/credentials/telegram-user/default.session",
       dmPolicy: "pairing",
@@ -30,6 +32,7 @@ This plugin connects a **Telegram user account** via MTProto (GramJS). It is sep
 Environment variable fallbacks:
 - `TELEGRAM_USER_API_ID`
 - `TELEGRAM_USER_API_HASH`
+- `TELEGRAM_USER_BOT_TOKEN`
 
 ## Login (Agent Tool)
 
@@ -55,7 +58,15 @@ You can also save a known session string directly:
 { "action": "saveSession", "sessionString": "<string session>" }
 ```
 
+## History (Agent Tool)
+
+Fetch recent messages from a chat:
+```
+{ "action": "history", "chatId": "<chatId or @username>", "hours": 24, "limit": 200 }
+```
+
 ## Notes
 
 - 2FA/password-based logins are **not** handled yet. If your account requires a password, generate a session string externally and use `saveSession`.
 - Media sending is not implemented yet (text only).
+- MTProto bot mode works via `botToken`, but permissions are still bot-limited.

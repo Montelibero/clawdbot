@@ -18,6 +18,7 @@ import {
   type ResolvedTelegramUserAccount,
 } from "./accounts.js";
 import { createTelegramUserLoginTool } from "./login-tool.js";
+import { createTelegramUserHistoryTool } from "./history-tool.js";
 import { monitorTelegramUserProvider } from "./monitor.js";
 import { readSessionString } from "./storage.js";
 
@@ -91,6 +92,7 @@ export const telegramUserPlugin: ChannelPlugin<ResolvedTelegramUserAccount> = {
       }),
     isConfigured: async (account) => {
       if (!account.apiId || !account.apiHash) return false;
+      if (account.botToken?.trim()) return true;
       if (account.sessionString?.trim()) return true;
       if (!account.sessionFile) return false;
       const session = await readSessionString(account.sessionFile);
@@ -139,7 +141,10 @@ export const telegramUserPlugin: ChannelPlugin<ResolvedTelegramUserAccount> = {
     },
   },
   outbound: createTelegramUserOutboundAdapter(),
-  agentTools: (ctx) => [createTelegramUserLoginTool({ cfg: ctx.cfg })],
+  agentTools: (ctx) => [
+    createTelegramUserLoginTool({ cfg: ctx.cfg }),
+    createTelegramUserHistoryTool({ cfg: ctx.cfg }),
+  ],
   gateway: {
     startAccount: async (ctx) => {
       const account = ctx.account;
