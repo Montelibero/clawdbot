@@ -5,6 +5,7 @@ RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
 RUN corepack enable
+ENV PNPM_CONFIG_LINK_WORKSPACE_PACKAGES=true
 
 # Install uv/uvx (Astral) + webhook.site CLI
 ENV UV_INSTALL_DIR=/usr/local/bin
