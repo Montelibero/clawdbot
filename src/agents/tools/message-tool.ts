@@ -351,6 +351,11 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         params.accountId = accountId;
       }
 
+      // If threadId not provided, use currentThreadTs from context (for topic routing)
+      if (!params.threadId && options?.currentThreadTs) {
+        params.threadId = options.currentThreadTs;
+      }
+
       const gateway = {
         url: readStringParam(params, "gatewayUrl", { trim: false }),
         token: readStringParam(params, "gatewayToken", { trim: false }),

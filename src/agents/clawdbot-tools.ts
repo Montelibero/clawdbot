@@ -95,7 +95,7 @@ export function createClawdbotTools(options?: {
       config: options?.config,
       currentChannelId: options?.currentChannelId,
       currentChannelProvider: options?.agentChannel,
-      currentThreadTs: options?.currentThreadTs,
+      currentThreadTs: options?.currentThreadTs ?? (options?.agentThreadId != null ? String(options.agentThreadId) : undefined),
       replyToMode: options?.replyToMode,
       hasRepliedRef: options?.hasRepliedRef,
     }),
