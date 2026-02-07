@@ -6,6 +6,11 @@ ENV PATH="/root/.bun/bin:${PATH}"
 
 RUN corepack enable
 
+# Install uv/uvx (Astral) + webhook.site CLI
+ENV UV_INSTALL_DIR=/usr/local/bin
+RUN curl -fsSL https://astral.sh/uv/install.sh | sh && \
+    npm install -g @webhooksite/whcli
+
 WORKDIR /app
 
 ARG CLAWDBOT_DOCKER_APT_PACKAGES=""
