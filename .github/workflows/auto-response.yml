@@ -1,10 +1,7 @@
 name: Auto response
 
 on:
-  issues:
-    types: [labeled]
-  pull_request:
-    types: [labeled]
+  workflow_dispatch:
 
 permissions:
   issues: write
