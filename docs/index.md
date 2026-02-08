@@ -79,7 +79,7 @@ Most operations flow through the **Gateway** (`clawdbot gateway`), a single long
 
 - 📱 **WhatsApp Integration** — Uses Baileys for WhatsApp Web protocol
 - ✈️ **Telegram Bot** — DMs + groups via grammY
-- 👤 **Telegram User MTProto** — user accounts via GramJS
+- 👤 **Telegram User MTProto** — primarily for bots; user accounts via GramJS are not recommended
 - 🎮 **Discord Bot** — DMs + guild channels via channels.discord.js
 - 🧩 **Mattermost Bot (plugin)** — Bot token + WebSocket events
 - 💬 **iMessage** — Local imsg CLI integration (macOS)

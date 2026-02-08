@@ -1,6 +1,10 @@
 # Telegram User (MTProto) Channel Plugin
 
-This plugin connects a **Telegram user account** via MTProto (GramJS). It is separate from the Telegram Bot API channel.
+IMPORTANT: THIS EXTENSION IS PRIMARILY FOR BOTS. DO NOT USE IT FOR USER ACCOUNTS UNLESS YOU
+UNDERSTAND THE RISKS. USER LOGINS VIA PHONE NUMBER ARE SUPPORTED ONLY AT YOUR OWN RISK.
+
+This plugin connects a Telegram account via MTProto (GramJS). It is separate from the Telegram Bot
+API channel. The preferred use is MTProto bot auth; user logins are a fallback.
 
 ## Config (JSON5)
 
@@ -11,7 +15,7 @@ This plugin connects a **Telegram user account** via MTProto (GramJS). It is sep
       enabled: true,
       apiId: 123456,
       apiHash: "YOUR_API_HASH",
-      // Optional: use bot token (MTProto bot auth)
+      // Optional: use bot token (MTProto bot auth, RECOMMENDED)
       // botToken: "123456:ABCDEF",
       // Optional: override session storage path
       // sessionFile: "/home/node/.clawdbot/credentials/telegram-user/default.session",
@@ -38,12 +42,14 @@ Environment variable fallbacks:
 
 The plugin exposes a tool `telegram_user_login`:
 
+IMPORTANT: THIS IS PRIMARILY FOR BOTS. USER LOGINS VIA PHONE NUMBER ARE NOT RECOMMENDED.
+
 1) Send a login code:
 ```
 { "action": "sendCode", "phoneNumber": "+1234567890" }
 ```
 
-2) Sign in using the code:
+2) Sign in using the code (USER LOGIN, NOT RECOMMENDED):
 ```
 { "action": "signIn", "phoneCode": "12345" }
 ```
@@ -53,7 +59,7 @@ The session string is stored at:
 ~/.clawdbot/credentials/telegram-user/<accountId>.session
 ```
 
-You can also save a known session string directly:
+You can also save a known session string directly (USER LOGIN, NOT RECOMMENDED):
 ```
 { "action": "saveSession", "sessionString": "<string session>" }
 ```
@@ -67,6 +73,8 @@ Fetch recent messages from a chat:
 
 ## Notes
 
-- 2FA/password-based logins are **not** handled yet. If your account requires a password, generate a session string externally and use `saveSession`.
+- PRIMARY USE CASE: MTProto bot auth via `botToken`.
+- 2FA/password-based user logins are **not** handled yet. If your account requires a password,
+  generate a session string externally and use `saveSession` (NOT RECOMMENDED).
 - Media sending is not implemented yet (text only).
 - MTProto bot mode works via `botToken`, but permissions are still bot-limited.

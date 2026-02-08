@@ -17,7 +17,7 @@
 </p>
 
 **Clawdbot** is a *personal AI assistant* you run on your own devices.
-It answers you on the channels you already use (WhatsApp, Telegram Bot API, Telegram User MTProto, Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
+It answers you on the channels you already use (WhatsApp, Telegram Bot API, Telegram User MTProto [PRIMARILY FOR BOTS; USER ACCOUNTS NOT RECOMMENDED], Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
 
 If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.
 
@@ -116,7 +116,7 @@ Run `clawdbot doctor` to surface risky/misconfigured DM policies.
 ## Highlights
 
 - **[Local-first Gateway](https://docs.clawd.bot/gateway)** — single control plane for sessions, channels, tools, and events.
-- **[Multi-channel inbox](https://docs.clawd.bot/channels)** — WhatsApp, Telegram Bot API, Telegram User MTProto, Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, Microsoft Teams, Matrix, Zalo, Zalo Personal, WebChat, macOS, iOS/Android.
+- **[Multi-channel inbox](https://docs.clawd.bot/channels)** — WhatsApp, Telegram Bot API, Telegram User MTProto (primarily for bots; user accounts not recommended), Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, Microsoft Teams, Matrix, Zalo, Zalo Personal, WebChat, macOS, iOS/Android.
 - **[Multi-agent routing](https://docs.clawd.bot/gateway/configuration)** — route inbound channels/accounts/peers to isolated agents (workspaces + per-agent sessions).
 - **[Voice Wake](https://docs.clawd.bot/nodes/voicewake) + [Talk Mode](https://docs.clawd.bot/nodes/talk)** — always-on speech for macOS/iOS/Android with ElevenLabs.
 - **[Live Canvas](https://docs.clawd.bot/platforms/mac/canvas)** — agent-driven visual workspace with [A2UI](https://docs.clawd.bot/platforms/mac/canvas#canvas-a2ui).
@@ -138,7 +138,7 @@ Run `clawdbot doctor` to surface risky/misconfigured DM policies.
 - [Media pipeline](https://docs.clawd.bot/nodes/images): images/audio/video, transcription hooks, size caps, temp file lifecycle. Audio details: [Audio](https://docs.clawd.bot/nodes/audio).
 
 ### Channels
-- [Channels](https://docs.clawd.bot/channels): [WhatsApp](https://docs.clawd.bot/channels/whatsapp) (Baileys), [Telegram](https://docs.clawd.bot/channels/telegram) (grammY), [Telegram User MTProto](https://docs.clawd.bot/channels/telegram#telegram-user-mtproto) (GramJS), [Slack](https://docs.clawd.bot/channels/slack) (Bolt), [Discord](https://docs.clawd.bot/channels/discord) (discord.js), [Google Chat](https://docs.clawd.bot/channels/googlechat) (Chat API), [Signal](https://docs.clawd.bot/channels/signal) (signal-cli), [iMessage](https://docs.clawd.bot/channels/imessage) (imsg), [BlueBubbles](https://docs.clawd.bot/channels/bluebubbles) (extension), [Microsoft Teams](https://docs.clawd.bot/channels/msteams) (extension), [Matrix](https://docs.clawd.bot/channels/matrix) (extension), [Zalo](https://docs.clawd.bot/channels/zalo) (extension), [Zalo Personal](https://docs.clawd.bot/channels/zalouser) (extension), [WebChat](https://docs.clawd.bot/web/webchat).
+- [Channels](https://docs.clawd.bot/channels): [WhatsApp](https://docs.clawd.bot/channels/whatsapp) (Baileys), [Telegram](https://docs.clawd.bot/channels/telegram) (grammY), [Telegram User MTProto](https://docs.clawd.bot/channels/telegram#telegram-user-mtproto) (GramJS, primarily for bots; user accounts not recommended), [Slack](https://docs.clawd.bot/channels/slack) (Bolt), [Discord](https://docs.clawd.bot/channels/discord) (discord.js), [Google Chat](https://docs.clawd.bot/channels/googlechat) (Chat API), [Signal](https://docs.clawd.bot/channels/signal) (signal-cli), [iMessage](https://docs.clawd.bot/channels/imessage) (imsg), [BlueBubbles](https://docs.clawd.bot/channels/bluebubbles) (extension), [Microsoft Teams](https://docs.clawd.bot/channels/msteams) (extension), [Matrix](https://docs.clawd.bot/channels/matrix) (extension), [Zalo](https://docs.clawd.bot/channels/zalo) (extension), [Zalo Personal](https://docs.clawd.bot/channels/zalouser) (extension), [WebChat](https://docs.clawd.bot/web/webchat).
 - [Group routing](https://docs.clawd.bot/concepts/group-messages): mention gating, reply tags, per-channel chunking and routing. Channel rules: [Channels](https://docs.clawd.bot/channels).
 
 ### Apps + nodes
@@ -169,7 +169,7 @@ Run `clawdbot doctor` to surface risky/misconfigured DM policies.
 ## How it works (short)
 
 ```
-WhatsApp / Telegram Bot API / Telegram User MTProto / Slack / Discord / Google Chat / Signal / iMessage / BlueBubbles / Microsoft Teams / Matrix / Zalo / Zalo Personal / WebChat
+WhatsApp / Telegram Bot API / Telegram User MTProto (primarily for bots; user accounts not recommended) / Slack / Discord / Google Chat / Signal / iMessage / BlueBubbles / Microsoft Teams / Matrix / Zalo / Zalo Personal / WebChat
                │
                ▼
 ┌───────────────────────────────┐
