@@ -82,6 +82,7 @@ Fetch recent messages from a chat:
 ```
 
 Note: in bot mode (`botToken`), use `ids` form below. `limit` history is user-account mode only.
+`hours` and `limit` accept numbers or numeric strings (for XML/string-based tool transports).
 
 Fetch exact message IDs (high-level GramJS method, works for bot mode too):
 ```

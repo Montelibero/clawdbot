@@ -58,6 +58,18 @@ function parseIds(input: unknown): number[] {
     .filter((num) => Number.isFinite(num) && num > 0);
 }
 
+function parsePositiveInt(input: unknown, defaultValue: number, maxValue?: number): number {
+  const raw =
+    typeof input === "number"
+      ? input
+      : typeof input === "string"
+        ? Number.parseInt(input.trim(), 10)
+        : NaN;
+  if (!Number.isFinite(raw)) return defaultValue;
+  const normalized = Math.max(1, Math.floor(raw));
+  return typeof maxValue === "number" ? Math.min(maxValue, normalized) : normalized;
+}
+
 export function createTelegramUserHistoryTool(params?: {
   cfg?: ClawdbotConfig;
 }): ChannelAgentTool {
@@ -75,14 +87,8 @@ export function createTelegramUserHistoryTool(params?: {
       const accountId = typeof input.accountId === "string" ? input.accountId.trim() : undefined;
       const chatId = String(input.chatId ?? "").trim();
       if (!chatId) throw new Error("chatId is required");
-      const hours =
-        typeof input.hours === "number" && Number.isFinite(input.hours)
-          ? Math.max(1, Math.floor(input.hours))
-          : 24;
-      const limit =
-        typeof input.limit === "number" && Number.isFinite(input.limit)
-          ? Math.max(1, Math.min(1000, Math.floor(input.limit)))
-          : 200;
+      const hours = parsePositiveInt(input.hours, 24);
+      const limit = parsePositiveInt(input.limit, 200, 1000);
       const ids = parseIds(input.ids);
 
       const cfg = params?.cfg ?? ({} as ClawdbotConfig);
