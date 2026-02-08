@@ -30,6 +30,46 @@ Minimal config:
 }
 ```
 
+## Telegram User MTProto
+Clawdbot also supports a **Telegram user account** via MTProto (GramJS). This is a separate channel
+from the Bot API and lives under `channels.telegram-user` as an extension.
+
+Use this when you need a user account instead of a bot, or want MTProto-specific behavior.
+
+### Quick setup (Telegram user)
+1) Create an API ID + API hash at [my.telegram.org](https://my.telegram.org).
+2) Enable the extension + set credentials.
+3) Log in with the `telegram_user_login` tool to create a session.
+
+Example config:
+```json5
+{
+  channels: {
+    "telegram-user": {
+      enabled: true,
+      apiId: 123456,
+      apiHash: "YOUR_API_HASH",
+      // Optional: MTProto bot auth
+      // botToken: "123456:ABCDEF",
+      dmPolicy: "pairing",
+      allowFrom: ["*"],
+      groupPolicy: "allowlist",
+      groupAllowFrom: ["*"]
+    }
+  },
+  plugins: {
+    entries: {
+      "telegram-user": { enabled: true }
+    }
+  }
+}
+```
+
+Login notes:
+- Use the `telegram_user_login` tool to send the code and complete sign-in.
+- Sessions are stored under `~/.clawdbot/credentials/telegram-user/`.
+- 2FA password logins are not handled yet; use a prebuilt session string if needed.
+
 ## What it is
 - A Telegram Bot API channel owned by the Gateway.
 - Deterministic routing: replies go back to Telegram; the model never chooses channels.

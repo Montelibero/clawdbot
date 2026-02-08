@@ -24,7 +24,7 @@ read_when:
   <a href="/start/clawd">Clawdbot assistant setup</a>
 </p>
 
-Clawdbot bridges WhatsApp (via WhatsApp Web / Baileys), Telegram (Bot API / grammY), Discord (Bot API / channels.discord.js), and iMessage (imsg CLI) to coding agents like [Pi](https://github.com/badlogic/pi-mono). Plugins add Mattermost (Bot API + WebSocket) and more.
+Clawdbot bridges WhatsApp (via WhatsApp Web / Baileys), Telegram Bot API (grammY), Telegram user accounts (MTProto / GramJS), Discord (Bot API / channels.discord.js), and iMessage (imsg CLI) to coding agents like [Pi](https://github.com/badlogic/pi-mono). Plugins add Mattermost (Bot API + WebSocket) and more.
 Clawdbot also powers [Clawd](https://clawd.me), the space‑lobster assistant.
 
 ## Start here
@@ -79,6 +79,7 @@ Most operations flow through the **Gateway** (`clawdbot gateway`), a single long
 
 - 📱 **WhatsApp Integration** — Uses Baileys for WhatsApp Web protocol
 - ✈️ **Telegram Bot** — DMs + groups via grammY
+- 👤 **Telegram User MTProto** — user accounts via GramJS
 - 🎮 **Discord Bot** — DMs + guild channels via channels.discord.js
 - 🧩 **Mattermost Bot (plugin)** — Bot token + WebSocket events
 - 💬 **iMessage** — Local imsg CLI integration (macOS)
@@ -191,6 +192,7 @@ Example:
   - [WebChat](/web/webchat)
   - [Control UI (browser)](/web/control-ui)
   - [Telegram](/channels/telegram)
+  - [Telegram User MTProto](/channels/telegram#telegram-user-mtproto)
   - [Discord](/channels/discord)
   - [Mattermost (plugin)](/channels/mattermost)
   - [iMessage](/channels/imessage)
