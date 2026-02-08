@@ -29,9 +29,9 @@ COPY patches ./patches
 COPY scripts ./scripts
 
 RUN pnpm install --frozen-lockfile
-RUN pnpm -C extensions/telegram-user install --prod --ignore-workspace
 
 COPY . .
+RUN pnpm -C extensions/telegram-user install --prod --ignore-workspace
 RUN pnpm build
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV CLAWDBOT_PREFER_PNPM=1
