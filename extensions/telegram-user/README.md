@@ -81,6 +81,8 @@ Fetch recent messages from a chat:
 { "action": "history", "chatId": "<chatId or @username>", "hours": 24, "limit": 200 }
 ```
 
+Note: in bot mode (`botToken`), use `ids` form below. `limit` history is user-account mode only.
+
 Fetch exact message IDs (high-level GramJS method, works for bot mode too):
 ```
 { "action": "history", "chatId": "<chatId or @username>", "ids": [123, 124, 125] }

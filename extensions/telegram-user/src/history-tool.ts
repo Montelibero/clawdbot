@@ -69,6 +69,12 @@ export function createTelegramUserHistoryTool(params?: {
       const cfg = params?.cfg ?? ({} as ClawdbotConfig);
       const account = resolveTelegramUserAccount({ cfg, accountId });
       const { client } = await getTelegramUserClient(account);
+      const isBotMode = Boolean(account.botToken?.trim());
+      if (isBotMode && ids.length === 0) {
+        throw new Error(
+          "Bot mode requires ids. Use: {\"action\":\"history\",\"chatId\":\"...\",\"ids\":[123,124]}",
+        );
+      }
 
       const since = Date.now() - hours * 60 * 60 * 1000;
       const messages =
