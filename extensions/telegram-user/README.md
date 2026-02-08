@@ -100,6 +100,7 @@ If your tool transport passes parameters as strings (for example XML `<parameter
 ## Raw MTProto (Agent Tool)
 
 Tool: `telegram_user_raw` (disabled by default).
+Method availability quick reference: `extensions/telegram-user/MTProto-methods.md`.
 
 Enable explicitly in config:
 ```json5
