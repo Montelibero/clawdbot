@@ -299,6 +299,12 @@ function buildChatCommands(): ChatCommandDefinition[] {
       textAlias: "/restart",
     }),
     defineChatCommand({
+      key: "unlock",
+      nativeName: "unlock",
+      description: "Remove the session lock for this chat.",
+      textAlias: "/unlock",
+    }),
+    defineChatCommand({
       key: "activation",
       nativeName: "activation",
       description: "Set group activation mode.",

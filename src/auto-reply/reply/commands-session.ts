@@ -1,6 +1,9 @@
+import fs from "node:fs/promises";
+
 import { abortEmbeddedPiRun } from "../../agents/pi-embedded.js";
 import type { SessionEntry } from "../../config/sessions.js";
 import { updateSessionStore } from "../../config/sessions.js";
+import { resolveSessionTranscriptPath } from "../../config/sessions/paths.js";
 import { logVerbose } from "../../globals.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { scheduleGatewaySigusr1Restart, triggerClawdbotRestart } from "../../infra/restart.js";
@@ -256,6 +259,57 @@ export const handleRestartCommand: CommandHandler = async (params, allowTextComm
     reply: {
       text: `⚙️ Restarting clawdbot via ${restartMethod.method}; give me a few seconds to come back online.`,
     },
+  };
+};
+
+export const handleUnlockCommand: CommandHandler = async (params, allowTextCommands) => {
+  if (!allowTextCommands) return null;
+  if (!params.command.commandBodyNormalized.startsWith("/unlock")) return null;
+  if (!params.command.isAuthorizedSender) {
+    logVerbose(
+      `Ignoring /unlock from unauthorized sender: ${params.command.senderId || "<unknown>"}`,
+    );
+    return { shouldContinue: false };
+  }
+
+  const sessionEntry = params.sessionEntry;
+  if (!sessionEntry?.sessionId) {
+    return {
+      shouldContinue: false,
+      reply: { text: "⚠️ No session file found for this chat." },
+    };
+  }
+
+  const sessionFile =
+    sessionEntry.sessionFile ??
+    resolveSessionTranscriptPath(
+      sessionEntry.sessionId,
+      params.agentId,
+      params.ctx.MessageThreadId ?? undefined,
+    );
+  const lockPath = `${sessionFile}.lock`;
+
+  try {
+    await fs.stat(lockPath);
+  } catch {
+    return {
+      shouldContinue: false,
+      reply: { text: "✅ No session lock present." },
+    };
+  }
+
+  try {
+    await fs.rm(lockPath, { force: true });
+  } catch (err) {
+    return {
+      shouldContinue: false,
+      reply: { text: `⚠️ Failed to remove session lock: ${String(err)}` },
+    };
+  }
+
+  return {
+    shouldContinue: false,
+    reply: { text: "✅ Session lock removed." },
   };
 };
 
