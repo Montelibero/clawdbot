@@ -2,6 +2,8 @@
 
 IMPORTANT: THIS EXTENSION IS PRIMARILY FOR BOTS. DO NOT USE IT FOR USER ACCOUNTS UNLESS YOU
 UNDERSTAND THE RISKS. USER LOGINS VIA PHONE NUMBER ARE SUPPORTED ONLY AT YOUR OWN RISK.
+SECURITY WARNING: OPENING DMs OR GROUPS WITHOUT PAIRING/ALLOWLIST CAN LET STRANGERS TRIGGER
+YOUR AGENT AND ACCESS CONNECTED TOOLS. ONLY DO THIS IF YOU KNOW EXACTLY WHY YOU NEED IT.
 
 This plugin connects a Telegram account via MTProto (GramJS). It is separate from the Telegram Bot
 API channel. The preferred use is MTProto bot auth; user logins are a fallback.
@@ -19,10 +21,11 @@ API channel. The preferred use is MTProto bot auth; user logins are a fallback.
       // botToken: "123456:ABCDEF",
       // Optional: override session storage path
       // sessionFile: "/home/node/.clawdbot/credentials/telegram-user/default.session",
+      // Secure defaults: pairing + empty allowlists
       dmPolicy: "pairing",
-      allowFrom: ["*"],
+      allowFrom: [],
       groupPolicy: "allowlist",
-      groupAllowFrom: ["*"],
+      groupAllowFrom: [],
     }
   },
   plugins: {
@@ -43,6 +46,11 @@ Environment variable fallbacks:
 The plugin exposes a tool `telegram_user_login`:
 
 IMPORTANT: THIS IS PRIMARILY FOR BOTS. USER LOGINS VIA PHONE NUMBER ARE NOT RECOMMENDED.
+
+If you want to open access:
+1) You must explicitly change `dmPolicy` and/or allowlists.
+2) Confirm twice that you understand the risk of unsolicited messages.
+3) Expect abusive/hostile traffic if you open access broadly.
 
 1) Send a login code:
 ```

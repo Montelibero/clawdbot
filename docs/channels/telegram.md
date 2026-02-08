@@ -32,6 +32,8 @@ Minimal config:
 
 ## Telegram User MTProto
 IMPORTANT: THIS IS PRIMARILY FOR BOTS. USER ACCOUNTS ARE NOT RECOMMENDED.
+SECURITY WARNING: OPENING DMs OR GROUPS WITHOUT PAIRING/ALLOWLIST CAN LET STRANGERS TRIGGER
+YOUR AGENT AND ACCESS CONNECTED TOOLS. ONLY DO THIS IF YOU KNOW EXACTLY WHY YOU NEED IT.
 
 Clawdbot also supports a Telegram account via MTProto (GramJS). This is a separate channel from the
 Bot API and lives under `channels.telegram-user` as an extension. The preferred use is MTProto bot
@@ -54,10 +56,11 @@ Example config:
       apiHash: "YOUR_API_HASH",
       // Optional: MTProto bot auth
       // botToken: "123456:ABCDEF",
+      // Secure defaults: pairing + empty allowlists
       dmPolicy: "pairing",
-      allowFrom: ["*"],
+      allowFrom: [],
       groupPolicy: "allowlist",
-      groupAllowFrom: ["*"]
+      groupAllowFrom: []
     }
   },
   plugins: {
@@ -73,6 +76,11 @@ Login notes:
 - Use the `telegram_user_login` tool to send the code and complete sign-in (USER LOGIN NOT RECOMMENDED).
 - Sessions are stored under `~/.clawdbot/credentials/telegram-user/`.
 - 2FA password logins are not handled yet; use a prebuilt session string if needed (NOT RECOMMENDED).
+
+If you want to open access:
+1) You must explicitly change `dmPolicy` and/or allowlists.
+2) Confirm twice that you understand the risk of unsolicited messages.
+3) Expect abusive/hostile traffic if you open access broadly.
 
 ## What it is
 - A Telegram Bot API channel owned by the Gateway.
