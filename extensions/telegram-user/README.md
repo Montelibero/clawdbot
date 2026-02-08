@@ -88,6 +88,14 @@ Fetch exact message IDs (high-level GramJS method, works for bot mode too):
 { "action": "history", "chatId": "<chatId or @username>", "ids": [123, 124, 125] }
 ```
 
+If your tool transport passes parameters as strings (for example XML `<parameter>`), these also work:
+```
+{ "action": "history", "chatId": "-1001767165598", "ids": "[4099]" }
+```
+```
+{ "action": "history", "chatId": "-1001767165598", "ids": "4099,4100" }
+```
+
 ## Raw MTProto (Agent Tool)
 
 Tool: `telegram_user_raw` (disabled by default).

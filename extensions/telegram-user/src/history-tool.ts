@@ -16,8 +16,9 @@ export const TelegramUserHistoryToolSchema = Type.Object(
     accountId: Type.Optional(Type.String()),
     chatId: Type.String({ description: "Chat id or @username" }),
     ids: Type.Optional(
-      Type.Array(Type.Number({ description: "Exact Telegram message id" }), {
-        description: "Fetch exact message ids via MTProto high-level getMessages",
+      Type.Unknown({
+        description:
+          "Message ids. Accepts array (e.g. [4099]) or string (e.g. \"[4099]\" / \"4099,4100\").",
       }),
     ),
     hours: Type.Optional(Type.Number({ description: "Lookback window in hours (default 24)" })),
@@ -31,6 +32,30 @@ function jsonResult(payload: unknown) {
     content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
     details: payload,
   };
+}
+
+function parseIds(input: unknown): number[] {
+  if (Array.isArray(input)) {
+    return input
+      .filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry))
+      .map((entry) => Math.floor(entry))
+      .filter((entry) => entry > 0);
+  }
+  if (typeof input !== "string") return [];
+  const raw = input.trim();
+  if (!raw) return [];
+  if (raw.startsWith("[") && raw.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parseIds(parsed);
+    } catch {
+      return [];
+    }
+  }
+  return raw
+    .split(/[,\s]+/)
+    .map((part) => Number.parseInt(part.trim(), 10))
+    .filter((num) => Number.isFinite(num) && num > 0);
 }
 
 export function createTelegramUserHistoryTool(params?: {
@@ -58,13 +83,7 @@ export function createTelegramUserHistoryTool(params?: {
         typeof input.limit === "number" && Number.isFinite(input.limit)
           ? Math.max(1, Math.min(1000, Math.floor(input.limit)))
           : 200;
-      const ids =
-        Array.isArray(input.ids) && input.ids.length > 0
-          ? input.ids
-              .filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry))
-              .map((entry) => Math.floor(entry))
-              .filter((entry) => entry > 0)
-          : [];
+      const ids = parseIds(input.ids);
 
       const cfg = params?.cfg ?? ({} as ClawdbotConfig);
       const account = resolveTelegramUserAccount({ cfg, accountId });
