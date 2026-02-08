@@ -79,6 +79,11 @@ Fetch recent messages from a chat:
 { "action": "history", "chatId": "<chatId or @username>", "hours": 24, "limit": 200 }
 ```
 
+Fetch exact message IDs (high-level GramJS method, works for bot mode too):
+```
+{ "action": "history", "chatId": "<chatId or @username>", "ids": [123, 124, 125] }
+```
+
 ## Notes
 
 - PRIMARY USE CASE: MTProto bot auth via `botToken`.

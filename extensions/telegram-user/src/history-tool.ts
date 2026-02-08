@@ -15,6 +15,11 @@ export const TelegramUserHistoryToolSchema = Type.Object(
     action: stringEnum(ACTIONS),
     accountId: Type.Optional(Type.String()),
     chatId: Type.String({ description: "Chat id or @username" }),
+    ids: Type.Optional(
+      Type.Array(Type.Number({ description: "Exact Telegram message id" }), {
+        description: "Fetch exact message ids via MTProto high-level getMessages",
+      }),
+    ),
     hours: Type.Optional(Type.Number({ description: "Lookback window in hours (default 24)" })),
     limit: Type.Optional(Type.Number({ description: "Max messages to fetch (default 200)" })),
   },
@@ -53,13 +58,23 @@ export function createTelegramUserHistoryTool(params?: {
         typeof input.limit === "number" && Number.isFinite(input.limit)
           ? Math.max(1, Math.min(1000, Math.floor(input.limit)))
           : 200;
+      const ids =
+        Array.isArray(input.ids) && input.ids.length > 0
+          ? input.ids
+              .filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry))
+              .map((entry) => Math.floor(entry))
+              .filter((entry) => entry > 0)
+          : [];
 
       const cfg = params?.cfg ?? ({} as ClawdbotConfig);
       const account = resolveTelegramUserAccount({ cfg, accountId });
       const { client } = await getTelegramUserClient(account);
 
       const since = Date.now() - hours * 60 * 60 * 1000;
-      const messages = await client.getMessages(chatId, { limit });
+      const messages =
+        ids.length > 0
+          ? await client.getMessages(chatId, { ids })
+          : await client.getMessages(chatId, { limit });
       const items = messages
         .map((msg) => ({
           id: (msg as { id?: number }).id,
@@ -70,7 +85,7 @@ export function createTelegramUserHistoryTool(params?: {
         .filter((msg) => (msg.date ?? 0) >= since)
         .sort((a, b) => (a.date ?? 0) - (b.date ?? 0));
 
-      return jsonResult({ ok: true, chatId, hours, count: items.length, items });
+      return jsonResult({ ok: true, chatId, hours, ids: ids.length > 0 ? ids : undefined, count: items.length, items });
     },
   };
 }
