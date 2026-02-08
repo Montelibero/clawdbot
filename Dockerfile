@@ -31,7 +31,8 @@ COPY scripts ./scripts
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN npm --prefix extensions/telegram-user install --omit=dev
+RUN node -e "const fs=require('fs');const p='extensions/telegram-user/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));if(j.devDependencies&&j.devDependencies.clawdbot){delete j.devDependencies.clawdbot;fs.writeFileSync(p,JSON.stringify(j,null,2));}" \
+    && npm --prefix extensions/telegram-user install --omit=dev
 RUN pnpm build
 # Force pnpm for UI build (Bun may fail on ARM/Synology architectures)
 ENV CLAWDBOT_PREFER_PNPM=1
