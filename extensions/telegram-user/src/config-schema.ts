@@ -24,6 +24,7 @@ const telegramUserAccountSchema = z.object({
   groupAllowFrom: z.array(allowFromEntry).optional(),
   groups: z.object({}).catchall(groupConfigSchema).optional(),
   replyToMode: z.enum(["off", "first", "all"]).optional(),
+  allowRawApi: z.boolean().optional(),
 });
 
 export const TelegramUserConfigSchema = telegramUserAccountSchema.extend({

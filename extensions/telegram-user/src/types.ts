@@ -21,6 +21,7 @@ export type TelegramUserAccountConfig = {
   groupAllowFrom?: Array<string | number>;
   groups?: Record<string, TelegramUserGroupConfig>;
   replyToMode?: "off" | "first" | "all";
+  allowRawApi?: boolean;
 };
 
 export type TelegramUserConfig = TelegramUserAccountConfig & {

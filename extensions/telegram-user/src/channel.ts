@@ -19,6 +19,7 @@ import {
 } from "./accounts.js";
 import { createTelegramUserLoginTool } from "./login-tool.js";
 import { createTelegramUserHistoryTool } from "./history-tool.js";
+import { createTelegramUserRawTool } from "./raw-tool.js";
 import { monitorTelegramUserProvider } from "./monitor.js";
 import { readSessionString } from "./storage.js";
 
@@ -144,6 +145,7 @@ export const telegramUserPlugin: ChannelPlugin<ResolvedTelegramUserAccount> = {
   agentTools: (ctx) => [
     createTelegramUserLoginTool({ cfg: ctx.cfg }),
     createTelegramUserHistoryTool({ cfg: ctx.cfg }),
+    createTelegramUserRawTool({ cfg: ctx.cfg }),
   ],
   gateway: {
     startAccount: async (ctx) => {

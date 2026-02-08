@@ -19,6 +19,8 @@ API channel. The preferred use is MTProto bot auth; user logins are a fallback.
       apiHash: "YOUR_API_HASH",
       // Optional: use bot token (MTProto bot auth, RECOMMENDED)
       // botToken: "123456:ABCDEF",
+      // DANGEROUS: enables full raw MTProto client access tool
+      // allowRawApi: true,
       // Optional: override session storage path
       // sessionFile: "/home/node/.clawdbot/credentials/telegram-user/default.session",
       // Secure defaults: pairing + empty allowlists
@@ -82,6 +84,41 @@ Fetch recent messages from a chat:
 Fetch exact message IDs (high-level GramJS method, works for bot mode too):
 ```
 { "action": "history", "chatId": "<chatId or @username>", "ids": [123, 124, 125] }
+```
+
+## Raw MTProto (Agent Tool)
+
+Tool: `telegram_user_raw` (disabled by default).
+
+Enable explicitly in config:
+```json5
+{
+  channels: {
+    "telegram-user": {
+      allowRawApi: true
+    }
+  }
+}
+```
+
+Invoke any MTProto API constructor:
+```json
+{
+  "action": "invoke",
+  "acknowledgeRisk": true,
+  "apiMethod": "channels.EditTitle",
+  "params": { "channel": -1001234567890, "title": "New title" }
+}
+```
+
+Call any high-level TelegramClient method:
+```json
+{
+  "action": "callClient",
+  "acknowledgeRisk": true,
+  "clientMethod": "getMessages",
+  "args": ["@mychat", { "ids": [123, 124] }]
+}
 ```
 
 ## Notes
