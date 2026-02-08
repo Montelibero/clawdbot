@@ -31,4 +31,23 @@ describe("acquireSessionWriteLock", () => {
       await fs.rm(root, { recursive: true, force: true });
     }
   });
+
+  it("removes reused-pid lock from an earlier process start", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-lock-"));
+    try {
+      const sessionFile = path.join(root, "session.jsonl");
+      const lockPath = `${sessionFile}.lock`;
+      const oldCreatedAt = new Date(Date.now() - (Math.floor(process.uptime() * 1000) + 60_000)).toISOString();
+      await fs.writeFile(
+        lockPath,
+        JSON.stringify({ pid: process.pid, createdAt: oldCreatedAt }, null, 2),
+        "utf8",
+      );
+
+      const lock = await acquireSessionWriteLock({ sessionFile, timeoutMs: 500 });
+      await lock.release();
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+    }
+  });
 });

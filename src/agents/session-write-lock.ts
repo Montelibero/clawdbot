@@ -13,6 +13,7 @@ type HeldLock = {
 };
 
 const HELD_LOCKS = new Map<string, HeldLock>();
+const PROCESS_STARTED_AT_MS = Date.now() - Math.max(0, Math.floor(process.uptime() * 1000));
 
 function isAlive(pid: number): boolean {
   if (!Number.isFinite(pid) || pid <= 0) return false;
@@ -102,7 +103,9 @@ export async function acquireSessionWriteLock(params: {
       const createdAt = payload?.createdAt ? Date.parse(payload.createdAt) : NaN;
       const stale = !Number.isFinite(createdAt) || Date.now() - createdAt > staleMs;
       const alive = payload?.pid ? isAlive(payload.pid) : false;
-      if (stale || !alive) {
+      const samePidFromPreviousProcess =
+        payload?.pid === process.pid && Number.isFinite(createdAt) && createdAt < PROCESS_STARTED_AT_MS;
+      if (stale || !alive || samePidFromPreviousProcess) {
         await fs.rm(lockPath, { force: true });
         continue;
       }
