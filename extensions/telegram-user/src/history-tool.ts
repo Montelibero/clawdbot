@@ -118,7 +118,7 @@ export function createTelegramUserHistoryTool(params?: {
           text: (msg as { message?: string }).message,
           fromId: (msg as { fromId?: unknown }).fromId,
         }))
-        .filter((msg) => (msg.date ?? 0) >= since)
+        .filter((msg) => ids.length > 0 || (msg.date ?? 0) >= since)
         .sort((a, b) => (a.date ?? 0) - (b.date ?? 0));
 
       return jsonResult({ ok: true, chatId, hours, ids: ids.length > 0 ? ids : undefined, count: items.length, items });
