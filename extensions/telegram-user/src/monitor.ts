@@ -143,7 +143,7 @@ export async function monitorTelegramUserProvider(
       const groupPolicy = account.config.groupPolicy ?? "allowlist";
       if (groupPolicy === "disabled") return;
       const groupConfig =
-        account.config.groups?.[chatId] ?? account.config.groups?.[\"*\"] ?? undefined;
+        account.config.groups?.[chatId] ?? account.config.groups?.["*"] ?? undefined;
       if (groupConfig?.enabled === false) return;
       if (groupPolicy !== "open") {
         const groupAllowFrom = groupConfig?.allowFrom ?? account.config.groupAllowFrom ?? [];
