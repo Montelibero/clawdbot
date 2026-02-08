@@ -70,6 +70,10 @@ function parsePositiveInt(input: unknown, defaultValue: number, maxValue?: numbe
   return typeof maxValue === "number" ? Math.min(maxValue, normalized) : normalized;
 }
 
+function parseChatTarget(chatId: string): string | bigint {
+  return /^-?\d+$/.test(chatId) ? BigInt(chatId) : chatId;
+}
+
 export function createTelegramUserHistoryTool(params?: {
   cfg?: ClawdbotConfig;
 }): ChannelAgentTool {
@@ -102,10 +106,11 @@ export function createTelegramUserHistoryTool(params?: {
       }
 
       const since = Date.now() - hours * 60 * 60 * 1000;
+      const chatTarget = parseChatTarget(chatId);
       const messages =
         ids.length > 0
-          ? await client.getMessages(chatId, { ids })
-          : await client.getMessages(chatId, { limit });
+          ? await client.getMessages(chatTarget, { ids })
+          : await client.getMessages(chatTarget, { limit });
       const items = messages
         .map((msg) => ({
           id: (msg as { id?: number }).id,
