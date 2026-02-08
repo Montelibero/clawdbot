@@ -29,6 +29,7 @@ COPY patches ./patches
 COPY scripts ./scripts
 
 RUN pnpm install --frozen-lockfile
+RUN pnpm -C extensions/telegram-user install --prod --ignore-workspace
 
 COPY . .
 RUN pnpm build
