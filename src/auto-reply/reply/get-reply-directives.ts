@@ -106,6 +106,7 @@ export async function resolveReplyDirectives(params: {
   typing: TypingController;
   opts?: GetReplyOptions;
   skillFilter?: string[];
+  forceConfigModel?: boolean;
 }): Promise<ReplyDirectiveResult> {
   const {
     ctx,
@@ -131,6 +132,7 @@ export async function resolveReplyDirectives(params: {
     typing,
     opts,
     skillFilter,
+    forceConfigModel,
   } = params;
   let provider = initialProvider;
   let model = initialModel;
@@ -235,6 +237,7 @@ export async function resolveReplyDirectives(params: {
     parsedDirectives.hasReasoningDirective ||
     parsedDirectives.hasElevatedDirective ||
     parsedDirectives.hasExecDirective ||
+    parsedDirectives.hasModelDirective ||
     parsedDirectives.hasModelDirective ||
     parsedDirectives.hasQueueDirective;
   if (hasInlineDirective) {
@@ -386,6 +389,7 @@ export async function resolveReplyDirectives(params: {
     provider,
     model,
     hasModelDirective: directives.hasModelDirective,
+    forceConfigModel,
   });
   provider = modelState.provider;
   model = modelState.model;

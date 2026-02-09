@@ -166,6 +166,7 @@ export async function getReplyFromConfig(
     typing,
     opts,
     skillFilter: opts?.skillFilter,
+    forceConfigModel: opts?.isHeartbeat,
   });
   if (directiveResult.kind === "reply") {
     return directiveResult.reply;

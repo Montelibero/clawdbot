@@ -231,6 +231,7 @@ export async function createModelSelectionState(params: {
   provider: string;
   model: string;
   hasModelDirective: boolean;
+  forceConfigModel?: boolean;
 }): Promise<ModelSelectionState> {
   const {
     cfg,
@@ -242,18 +243,22 @@ export async function createModelSelectionState(params: {
     storePath,
     defaultProvider,
     defaultModel,
+    forceConfigModel,
   } = params;
 
   let provider = params.provider;
   let model = params.model;
 
   const hasAllowlist = agentCfg?.models && Object.keys(agentCfg.models).length > 0;
-  const initialStoredOverride = resolveStoredModelOverride({
-    sessionEntry,
-    sessionStore,
-    sessionKey,
-    parentSessionKey,
-  });
+  // If forcing config model, pretend there is no stored override to avoid loading it.
+  const initialStoredOverride = !forceConfigModel
+    ? resolveStoredModelOverride({
+        sessionEntry,
+        sessionStore,
+        sessionKey,
+        parentSessionKey,
+      })
+    : null;
   const hasStoredOverride = Boolean(initialStoredOverride);
   const needsModelCatalog = params.hasModelDirective || hasAllowlist || hasStoredOverride;
 
@@ -274,41 +279,44 @@ export async function createModelSelectionState(params: {
     allowedModelKeys = allowed.allowedKeys;
   }
 
-  if (sessionEntry && sessionStore && sessionKey && hasStoredOverride) {
-    const overrideProvider = sessionEntry.providerOverride?.trim() || defaultProvider;
-    const overrideModel = sessionEntry.modelOverride?.trim();
-    if (overrideModel) {
-      const key = modelKey(overrideProvider, overrideModel);
-      if (allowedModelKeys.size > 0 && !allowedModelKeys.has(key)) {
-        const { updated } = applyModelOverrideToSessionEntry({
-          entry: sessionEntry,
-          selection: { provider: defaultProvider, model: defaultModel, isDefault: true },
-        });
-        if (updated) {
-          sessionStore[sessionKey] = sessionEntry;
-          if (storePath) {
-            await updateSessionStore(storePath, (store) => {
-              store[sessionKey] = sessionEntry;
-            });
+  // Only apply stored override logic if NOT forcing config model.
+  if (!forceConfigModel) {
+    if (sessionEntry && sessionStore && sessionKey && hasStoredOverride) {
+      const overrideProvider = sessionEntry.providerOverride?.trim() || defaultProvider;
+      const overrideModel = sessionEntry.modelOverride?.trim();
+      if (overrideModel) {
+        const key = modelKey(overrideProvider, overrideModel);
+        if (allowedModelKeys.size > 0 && !allowedModelKeys.has(key)) {
+          const { updated } = applyModelOverrideToSessionEntry({
+            entry: sessionEntry,
+            selection: { provider: defaultProvider, model: defaultModel, isDefault: true },
+          });
+          if (updated) {
+            sessionStore[sessionKey] = sessionEntry;
+            if (storePath) {
+              await updateSessionStore(storePath, (store) => {
+                store[sessionKey] = sessionEntry;
+              });
+            }
           }
+          resetModelOverride = updated;
         }
-        resetModelOverride = updated;
       }
     }
-  }
 
-  const storedOverride = resolveStoredModelOverride({
-    sessionEntry,
-    sessionStore,
-    sessionKey,
-    parentSessionKey,
-  });
-  if (storedOverride?.model) {
-    const candidateProvider = storedOverride.provider || defaultProvider;
-    const key = modelKey(candidateProvider, storedOverride.model);
-    if (allowedModelKeys.size === 0 || allowedModelKeys.has(key)) {
-      provider = candidateProvider;
-      model = storedOverride.model;
+    const storedOverride = resolveStoredModelOverride({
+      sessionEntry,
+      sessionStore,
+      sessionKey,
+      parentSessionKey,
+    });
+    if (storedOverride?.model) {
+      const candidateProvider = storedOverride.provider || defaultProvider;
+      const key = modelKey(candidateProvider, storedOverride.model);
+      if (allowedModelKeys.size === 0 || allowedModelKeys.has(key)) {
+        provider = candidateProvider;
+        model = storedOverride.model;
+      }
     }
   }
 
