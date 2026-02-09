@@ -82,6 +82,8 @@ Details: [Development channels](https://docs.clawd.bot/install/development-chann
 
 ## From source (development)
 
+(Test PR flow check — 2026-02-09)
+
 Prefer `pnpm` for builds from source. Bun is optional for running TypeScript directly.
 
 ```bash
