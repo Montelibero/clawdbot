@@ -66,6 +66,7 @@ type TelegramReactionOpts = {
 
 const PARSE_ERR_RE = /can't parse entities|parse entities|find end of the entity/i;
 const diagLogger = createSubsystemLogger("telegram/diagnostic");
+const sendLogger = createSubsystemLogger("telegram/send");
 
 function createTelegramHttpLogger(cfg: ReturnType<typeof loadConfig>) {
   const enabled = isDiagnosticFlagEnabled("telegram.http", cfg);
@@ -134,6 +135,15 @@ function normalizeChatId(to: string): string {
   return normalized;
 }
 
+function isLikelyTelegramUserChatId(chatId: string): boolean {
+  // For Bot API, user DMs have positive numeric chat IDs.
+  // Groups/supergroups/channels are negative (e.g. -100...).
+  // Usernames / @links are not DMs.
+  if (!/^[0-9]+$/.test(chatId)) return false;
+  const n = Number.parseInt(chatId, 10);
+  return Number.isFinite(n) && n > 0;
+}
+
 function normalizeMessageId(raw: string | number): number {
   if (typeof raw === "number" && Number.isFinite(raw)) {
     return Math.trunc(raw);
@@ -189,16 +199,6 @@ export async function sendMessageTelegram(
   const mediaUrl = opts.mediaUrl?.trim();
   const replyMarkup = buildInlineKeyboard(opts.buttons);
 
-  // Build optional params for forum topics and reply threading.
-  // Only include these if actually provided to keep API calls clean.
-  const messageThreadId =
-    opts.messageThreadId != null ? opts.messageThreadId : target.messageThreadId;
-  const threadIdParams = buildTelegramThreadParams(messageThreadId);
-  const threadParams: Record<string, number> = threadIdParams ? { ...threadIdParams } : {};
-  if (opts.replyToMessageId != null) {
-    threadParams.reply_to_message_id = Math.trunc(opts.replyToMessageId);
-  }
-  const hasThreadParams = Object.keys(threadParams).length > 0;
   const request = createTelegramRetryRunner({
     retry: opts.retry,
     configRetry: account.config.retry,
@@ -210,6 +210,51 @@ export async function sendMessageTelegram(
       logHttpError(label ?? "request", err);
       throw err;
     });
+
+  // Build optional params for forum topics and reply threading.
+  // Only include these if actually provided to keep API calls clean.
+  let messageThreadId =
+    opts.messageThreadId != null ? opts.messageThreadId : target.messageThreadId;
+
+  // Telegram Bot API 9.4 (2026-02-09): personal DMs can enable topics (`is_forum: true`).
+  // In those chats, outbound bot messages require `message_thread_id`.
+  // If the caller did not supply a thread, auto-create a forum topic and send into it.
+  if (messageThreadId == null && isLikelyTelegramUserChatId(chatId)) {
+    try {
+      const chat = await requestWithDiag(() => api.getChat(chatId), "getChat");
+      const isForum = Boolean((chat as unknown as { is_forum?: boolean }).is_forum);
+      if (isForum) {
+        const topicName = "General";
+        sendLogger.info(
+          `telegram dm topics enabled; creating forum topic for chat_id=${chatId} (name=${topicName})`,
+        );
+        const topic = await requestWithDiag(
+          () => api.createForumTopic(chatId, topicName),
+          "createForumTopic",
+        );
+        const createdId = (topic as unknown as { message_thread_id?: number }).message_thread_id;
+        if (!createdId || !Number.isFinite(createdId)) {
+          throw new Error(
+            `createForumTopic returned invalid message_thread_id: ${JSON.stringify(topic)}`,
+          );
+        }
+        messageThreadId = Math.trunc(createdId);
+      }
+    } catch (err) {
+      // Bubble the error up (caller will surface it); log for diagnosis.
+      sendLogger.warn(
+        `telegram dm topic auto-threading failed for chat_id=${chatId}: ${formatErrorMessage(err)}`,
+      );
+      throw err;
+    }
+  }
+
+  const threadIdParams = buildTelegramThreadParams(messageThreadId);
+  const threadParams: Record<string, number> = threadIdParams ? { ...threadIdParams } : {};
+  if (opts.replyToMessageId != null) {
+    threadParams.reply_to_message_id = Math.trunc(opts.replyToMessageId);
+  }
+  const hasThreadParams = Object.keys(threadParams).length > 0;
   const wrapChatNotFound = (err: unknown) => {
     if (!/400: Bad Request: chat not found/i.test(formatErrorMessage(err))) return err;
     return new Error(
