@@ -14,6 +14,10 @@ RUN curl -fsSL https://astral.sh/uv/install.sh | sh && \
 
 WORKDIR /app
 
+ARG GIT_COMMIT=""
+ENV GIT_COMMIT=$GIT_COMMIT
+LABEL org.opencontainers.image.revision=$GIT_COMMIT
+
 ARG CLAWDBOT_DOCKER_APT_PACKAGES=""
 RUN if [ -n "$CLAWDBOT_DOCKER_APT_PACKAGES" ]; then \
       apt-get update && \

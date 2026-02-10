@@ -38,6 +38,10 @@ loadDotEnv({ quiet: true });
 normalizeEnv();
 ensureClawdbotCliOnPath();
 
+if (process.env.GIT_COMMIT) {
+  console.log(`Clawdbot build revision: ${process.env.GIT_COMMIT}`);
+}
+
 // Capture all console output into structured logs while keeping stdout/stderr behavior.
 enableConsoleCapture();
 

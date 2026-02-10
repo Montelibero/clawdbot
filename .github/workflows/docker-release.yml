@@ -27,10 +27,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         run: |
-          docker build -t $REGISTRY/$IMAGE_NAME:latest .
-
-      - name: Push Docker image
-        run: |
-          docker push $REGISTRY/$IMAGE_NAME:latest
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          TAG_LATEST=$REGISTRY/$IMAGE_NAME:latest
+          TAG_SHA=$REGISTRY/$IMAGE_NAME:$SHA_SHORT
+          
+          docker build \
+            --build-arg "GIT_COMMIT=${{ github.sha }}" \
+            -t $TAG_LATEST \
+            -t $TAG_SHA \
+            .
+            
+          docker push $TAG_LATEST
+          docker push $TAG_SHA

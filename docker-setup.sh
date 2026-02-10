@@ -166,8 +166,10 @@ upsert_env "$ENV_FILE" \
   CLAWDBOT_DOCKER_APT_PACKAGES
 
 echo "==> Building Docker image: $IMAGE_NAME"
+GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo "unknown")"
 docker build \
   --build-arg "CLAWDBOT_DOCKER_APT_PACKAGES=${CLAWDBOT_DOCKER_APT_PACKAGES}" \
+  --build-arg "GIT_COMMIT=${GIT_COMMIT}" \
   -t "$IMAGE_NAME" \
   -f "$ROOT_DIR/Dockerfile" \
   "$ROOT_DIR"
