@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { botApi, botCtorSpy } = vi.hoisted(() => ({
   botApi: {
@@ -26,6 +26,12 @@ vi.mock("grammy", () => ({
 import { sendMessageTelegram } from "./send.js";
 
 describe("sendMessageTelegram", () => {
+  beforeEach(() => {
+    botApi.sendMessage.mockReset();
+    botApi.getChat.mockReset();
+    botApi.createForumTopic.mockReset();
+  });
+
   it("auto-creates a forum topic in DM when chat is_forum and threadId missing", async () => {
     const chatId = "123456"; // positive numeric => DM
 
@@ -40,9 +46,10 @@ describe("sendMessageTelegram", () => {
 
     expect(botApi.getChat).toHaveBeenCalledWith(chatId);
     expect(botApi.createForumTopic).toHaveBeenCalledWith(chatId, expect.any(String));
-    expect(botApi.sendMessage).toHaveBeenCalledWith(chatId, expect.any(String), {
+    expect(botApi.sendMessage).toHaveBeenCalledWith(chatId, "hi", {
       parse_mode: "HTML",
       message_thread_id: 777,
+      link_preview_options: { is_disabled: true },
     });
   });
 
