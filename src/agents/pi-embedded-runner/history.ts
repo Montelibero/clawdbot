@@ -53,7 +53,12 @@ export function getDmHistoryLimitFromSessionKey(
   const kind = providerParts[1]?.toLowerCase();
   const userIdRaw = providerParts.slice(2).join(":");
   const userId = stripThreadSuffix(userIdRaw);
-  if (kind !== "dm") return undefined;
+  
+  // Non-DM sessions (system, heartbeats, unknown) should have a reasonable default limit
+  // to prevent millions of tokens in history if they are never compacted.
+  if (kind !== "dm") {
+    return 10;
+  }
 
   const getLimit = (
     providerConfig:

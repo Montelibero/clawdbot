@@ -527,10 +527,13 @@ export async function runEmbeddedAttempt(
         const validated = transcriptPolicy.validateAnthropicTurns
           ? validateAnthropicTurns(validatedGemini)
           : validatedGemini;
-        const limited = limitHistoryTurns(
-          validated,
-          getDmHistoryLimitFromSessionKey(params.sessionKey, params.config),
-        );
+        
+        // Force a strict limit of 3 turns for heartbeats to prevent token bloat.
+        const effectiveLimit = params.isHeartbeat 
+          ? 3 
+          : getDmHistoryLimitFromSessionKey(params.sessionKey, params.config);
+
+        const limited = limitHistoryTurns(validated, effectiveLimit);
         cacheTrace?.recordStage("session:limited", { messages: limited });
         if (limited.length > 0) {
           activeSession.agent.replaceMessages(limited);
