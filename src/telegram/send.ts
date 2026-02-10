@@ -220,19 +220,22 @@ export async function sendMessageTelegram(
   const isThreadNotFoundError = (err: unknown) =>
     /message thread not found/i.test(formatErrorMessage(err));
 
-  const ensureDmForumTopicThreadId = async (reason: string): Promise<number | undefined> => {
+  const ensureDmForumTopicThreadId = async (
+    reason: string,
+    opts: { force?: boolean } = {},
+  ): Promise<number | undefined> => {
     if (!isDmChat) return undefined;
     const chat = await requestWithDiag(() => api.getChat(chatId), "getChat");
     const isForum = Boolean((chat as unknown as { is_forum?: boolean }).is_forum);
-    if (!isForum) {
+    if (!isForum && !opts.force) {
       sendLogger.info(
-        `telegram dm topics check: chat_id=${chatId} is_forum=false (reason=${reason})`,
+        `telegram dm topics check: chat_id=${chatId} is_forum=${isForum} (reason=${reason}) raw=${JSON.stringify(chat)}`,
       );
       return undefined;
     }
     const topicName = "General";
     sendLogger.warn(
-      `telegram dm topics enabled; creating forum topic for chat_id=${chatId} (reason=${reason}, name=${topicName})`,
+      `telegram dm topics enabled; creating forum topic for chat_id=${chatId} (reason=${reason}, name=${topicName}, forced=${Boolean(opts.force)})`,
     );
     const topic = await requestWithDiag(
       () => api.createForumTopic(chatId, topicName),
@@ -316,7 +319,7 @@ export async function sendMessageTelegram(
         sendLogger.warn(
           `telegram send failed: message thread not found for chat_id=${chatId}; attempting dm topic auto-create + retry`,
         );
-        const created = await ensureDmForumTopicThreadId("thread_not_found");
+        const created = await ensureDmForumTopicThreadId("thread_not_found", { force: true });
         if (created != null) {
           messageThreadId = created;
           const retryParams = {
