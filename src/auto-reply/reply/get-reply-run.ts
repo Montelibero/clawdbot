@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 import {
   abortEmbeddedPiRun,
   isEmbeddedPiRunActive,
@@ -49,6 +50,67 @@ type ExecOverrides = Pick<ExecToolDefaults, "host" | "security" | "ask" | "node"
 
 const BARE_SESSION_RESET_PROMPT =
   "A new session was started via /new or /reset. Say hi briefly (1-2 sentences) and ask what the user wants to do next. If the runtime model differs from default_model in the system prompt, mention the default model in the greeting. Do not mention internal steps, files, tools, or reasoning.";
+
+const LARGE_SESSION_MB_THRESHOLD = 5;
+const LARGE_SESSION_BYTES_THRESHOLD = LARGE_SESSION_MB_THRESHOLD * 1024 * 1024;
+const LARGE_SESSION_WARNING_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
+async function checkSessionSizeAndWarn(params: {
+  sessionFile?: string;
+  sessionEntry?: SessionEntry;
+  sessionStore?: Record<string, SessionEntry>;
+  sessionKey: string;
+  storePath?: string;
+  ctx: MsgContext;
+  cfg: ClawdbotConfig;
+  isHeartbeat: boolean;
+}) {
+  const { sessionFile, sessionEntry, sessionStore, sessionKey, storePath, ctx, cfg, isHeartbeat } =
+    params;
+  if (!sessionFile) return;
+
+  try {
+    const stats = await fs.stat(sessionFile);
+    if (stats.size > LARGE_SESSION_BYTES_THRESHOLD) {
+      const now = Date.now();
+      const lastWarned = sessionEntry?.lastSizeWarningAt ?? 0;
+
+      if (now - lastWarned > LARGE_SESSION_WARNING_COOLDOWN_MS) {
+        const sizeMb = (stats.size / (1024 * 1024)).toFixed(1);
+        const warning = `⚠️ Внимание: размер файла этой сессии (${sizeMb} МБ) превысил порог ${LARGE_SESSION_MB_THRESHOLD} МБ. Это может привести к значительному расходу токенов. Рекомендуется начать новую сессию командой /new.`;
+
+        if (isHeartbeat) {
+          logVerbose(`[Heartbeat] Large session detected: ${sessionKey} (${sizeMb} MB)`);
+        } else {
+          const channel = ctx.OriginatingChannel;
+          const to = ctx.OriginatingTo;
+          if (channel && to) {
+            await routeReply({
+              payload: { text: warning },
+              channel,
+              to,
+              sessionKey,
+              accountId: ctx.AccountId,
+              threadId: ctx.MessageThreadId,
+              cfg,
+            });
+          }
+        }
+
+        // Update session entry to record the warning time
+        if (sessionEntry && sessionStore && storePath) {
+          sessionEntry.lastSizeWarningAt = now;
+          sessionStore[sessionKey] = sessionEntry;
+          await updateSessionStore(storePath, (store) => {
+            store[sessionKey] = { ...store[sessionKey], lastSizeWarningAt: now };
+          });
+        }
+      }
+    }
+  } catch (err) {
+    // Ignore stat errors (e.g. file doesn't exist yet)
+  }
+}
 
 type RunPreparedReplyParams = {
   ctx: MsgContext;
@@ -307,6 +369,19 @@ export async function runPreparedReply(
   }
   const sessionIdFinal = sessionId ?? crypto.randomUUID();
   const sessionFile = resolveSessionFilePath(sessionIdFinal, sessionEntry);
+
+  // Check file size and warn if it's getting out of hand
+  await checkSessionSizeAndWarn({
+    sessionFile,
+    sessionEntry,
+    sessionStore,
+    sessionKey,
+    storePath,
+    ctx,
+    cfg,
+    isHeartbeat,
+  });
+
   const queueBodyBase = [threadStarterNote, baseBodyFinal].filter(Boolean).join("\n\n");
   const queueMessageId = sessionCtx.MessageSid?.trim();
   const queueMessageIdHint = queueMessageId ? `[message_id: ${queueMessageId}]` : "";
