@@ -116,7 +116,11 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
     threading: {
       resolveReplyToMode: ({ cfg }) => cfg.channels?.telegram?.replyToMode ?? "first",
       buildToolContext: ({ context, hasRepliedRef }) => {
-        const threadId = context.MessageThreadId ?? context.ReplyToId;
+        // Telegram threading:
+        // - MessageThreadId => forum topic thread id (message_thread_id)
+        // - ReplyToId => reply_to_message_id (NOT a thread id)
+        // Using ReplyToId as a thread id breaks outbound sends (e.g., "message thread not found").
+        const threadId = context.MessageThreadId;
         return {
           currentChannelId: context.To?.trim() || undefined,
           currentThreadTs: threadId != null ? String(threadId) : undefined,
