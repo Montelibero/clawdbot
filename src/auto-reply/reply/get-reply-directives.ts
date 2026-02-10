@@ -238,7 +238,6 @@ export async function resolveReplyDirectives(params: {
     parsedDirectives.hasElevatedDirective ||
     parsedDirectives.hasExecDirective ||
     parsedDirectives.hasModelDirective ||
-    parsedDirectives.hasModelDirective ||
     parsedDirectives.hasQueueDirective;
   if (hasInlineDirective) {
     const stripped = stripStructuralPrefixes(parsedDirectives.cleaned);
