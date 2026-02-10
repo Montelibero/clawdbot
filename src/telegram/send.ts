@@ -216,30 +216,41 @@ export async function sendMessageTelegram(
   let messageThreadId =
     opts.messageThreadId != null ? opts.messageThreadId : target.messageThreadId;
 
+  const isDmChat = isLikelyTelegramUserChatId(chatId);
+  const isThreadNotFoundError = (err: unknown) =>
+    /message thread not found/i.test(formatErrorMessage(err));
+
+  const ensureDmForumTopicThreadId = async (reason: string): Promise<number | undefined> => {
+    if (!isDmChat) return undefined;
+    const chat = await requestWithDiag(() => api.getChat(chatId), "getChat");
+    const isForum = Boolean((chat as unknown as { is_forum?: boolean }).is_forum);
+    if (!isForum) {
+      sendLogger.info(
+        `telegram dm topics check: chat_id=${chatId} is_forum=false (reason=${reason})`,
+      );
+      return undefined;
+    }
+    const topicName = "General";
+    sendLogger.warn(
+      `telegram dm topics enabled; creating forum topic for chat_id=${chatId} (reason=${reason}, name=${topicName})`,
+    );
+    const topic = await requestWithDiag(
+      () => api.createForumTopic(chatId, topicName),
+      "createForumTopic",
+    );
+    const createdId = (topic as unknown as { message_thread_id?: number }).message_thread_id;
+    if (!createdId || !Number.isFinite(createdId)) {
+      throw new Error(`createForumTopic returned invalid message_thread_id`);
+    }
+    return Math.trunc(createdId);
+  };
+
   // Telegram Bot API 9.4 (2026-02-09): personal DMs can enable topics (`is_forum: true`).
-  // In those chats, outbound bot messages require `message_thread_id`.
+  // In those chats, outbound bot messages may require `message_thread_id`.
   // If the caller did not supply a thread, auto-create a forum topic and send into it.
-  if (messageThreadId == null && isLikelyTelegramUserChatId(chatId)) {
+  if (messageThreadId == null && isDmChat) {
     try {
-      const chat = await requestWithDiag(() => api.getChat(chatId), "getChat");
-      const isForum = Boolean((chat as unknown as { is_forum?: boolean }).is_forum);
-      if (isForum) {
-        const topicName = "General";
-        sendLogger.info(
-          `telegram dm topics enabled; creating forum topic for chat_id=${chatId} (name=${topicName})`,
-        );
-        const topic = await requestWithDiag(
-          () => api.createForumTopic(chatId, topicName),
-          "createForumTopic",
-        );
-        const createdId = (topic as unknown as { message_thread_id?: number }).message_thread_id;
-        if (!createdId || !Number.isFinite(createdId)) {
-          throw new Error(
-            `createForumTopic returned invalid message_thread_id: ${JSON.stringify(topic)}`,
-          );
-        }
-        messageThreadId = Math.trunc(createdId);
-      }
+      messageThreadId = await ensureDmForumTopicThreadId("missing_thread");
     } catch (err) {
       // Bubble the error up (caller will surface it); log for diagnosis.
       sendLogger.warn(
@@ -276,7 +287,9 @@ export async function sendMessageTelegram(
 
   // Resolve link preview setting from config (default: enabled).
   const linkPreviewEnabled =
-    typeof opts.linkPreview === "boolean" ? opts.linkPreview : account.config.linkPreview ?? false;
+    typeof opts.linkPreview === "boolean"
+      ? opts.linkPreview
+      : (account.config.linkPreview ?? false);
   const linkPreviewOptions = linkPreviewEnabled ? undefined : { is_disabled: true };
 
   const sendTelegramText = async (
@@ -298,6 +311,26 @@ export async function sendMessageTelegram(
       () => api.sendMessage(chatId, htmlText, sendParams),
       "message",
     ).catch(async (err) => {
+      // If Telegram rejects the thread, self-heal for DM topic chats by creating a topic and retrying once.
+      if (isThreadNotFoundError(err) && isDmChat) {
+        sendLogger.warn(
+          `telegram send failed: message thread not found for chat_id=${chatId}; attempting dm topic auto-create + retry`,
+        );
+        const created = await ensureDmForumTopicThreadId("thread_not_found");
+        if (created != null) {
+          messageThreadId = created;
+          const retryParams = {
+            ...sendParams,
+            message_thread_id: created,
+          };
+          return await requestWithDiag(
+            () => api.sendMessage(chatId, htmlText, retryParams),
+            "message-retry-thread",
+          ).catch((err2) => {
+            throw wrapChatNotFound(err2);
+          });
+        }
+      }
       // Telegram rejects malformed HTML (e.g., unsupported tags or entities).
       // When that happens, fall back to plain text so the message still delivers.
       const errText = formatErrorMessage(err);
