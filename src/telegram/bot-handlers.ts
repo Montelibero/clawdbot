@@ -606,4 +606,54 @@ export const registerTelegramHandlers = ({
       runtime.error?.(danger(`handler failed: ${String(err)}`));
     }
   });
+
+  bot.on("channel_post", async (ctx) => {
+    try {
+      const post = ctx.channelPost;
+      if (!post) return;
+      if (shouldSkipUpdate(ctx)) return;
+
+      const text = (post.text ?? post.caption ?? "").trim();
+      const botId = ctx.me?.id;
+      if (!botId) return;
+
+      const botTag = `#${botId}`;
+      if (!text.includes(botTag)) return;
+
+      const chatId = post.chat.id;
+      const storeAllowFrom = await readTelegramAllowFromStore().catch(() => []);
+      const { groupConfig } = resolveTelegramGroupConfig(chatId);
+      const groupAllowOverride = groupConfig?.allowFrom;
+      const effectiveGroupAllow = normalizeAllowFromWithStore({
+        allowFrom: groupAllowOverride ?? groupAllowFrom,
+        storeAllowFrom,
+      });
+
+      // Authorization check for the channel
+      const isAllowed =
+        effectiveGroupAllow.hasWildcard ||
+        (effectiveGroupAllow.hasEntries &&
+          isSenderAllowed({
+            allow: effectiveGroupAllow,
+            senderId: String(chatId),
+          }));
+
+      if (!isAllowed) {
+        logVerbose(`Blocked telegram channel ${chatId} (not in allowlist)`);
+        return;
+      }
+
+      let media: Awaited<ReturnType<typeof resolveMedia>> = null;
+      try {
+        media = await resolveMedia(ctx, mediaMaxBytes, opts.token, opts.proxyFetch);
+      } catch (mediaErr) {
+        logVerbose(`telegram channel media resolution failed: ${String(mediaErr)}`);
+      }
+      const allMedia = media ? [{ path: media.path, contentType: media.contentType }] : [];
+
+      await processMessage(ctx, allMedia, storeAllowFrom);
+    } catch (err) {
+      runtime.error?.(danger(`telegram channel post handler failed: ${String(err)}`));
+    }
+  });
 };

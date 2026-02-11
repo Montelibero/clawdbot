@@ -112,13 +112,16 @@ export const buildTelegramMessageContext = async ({
   resolveGroupRequireMention,
   resolveTelegramGroupConfig,
 }: BuildTelegramMessageContextParams) => {
-  const msg = primaryCtx.message;
+  const msg = primaryCtx.message ?? primaryCtx.channelPost;
+  if (!msg) return null;
+
   recordChannelActivity({
     channel: "telegram",
     accountId: account.accountId,
     direction: "inbound",
   });
   const chatId = msg.chat.id;
+  const isChannel = msg.chat.type === "channel";
   const isGroup = msg.chat.type === "group" || msg.chat.type === "supergroup";
   const messageThreadId = (msg as { message_thread_id?: number }).message_thread_id;
   const isForum = (msg.chat as { is_forum?: boolean }).is_forum === true;
@@ -127,23 +130,35 @@ export const buildTelegramMessageContext = async ({
     messageThreadId,
   });
   const { groupConfig, topicConfig } = resolveTelegramGroupConfig(chatId, resolvedThreadId);
-  const peerId = isGroup ? buildTelegramGroupPeerId(chatId, resolvedThreadId) : String(chatId);
+  const peerId = isChannel
+    ? String(chatId)
+    : isGroup
+      ? buildTelegramGroupPeerId(chatId, resolvedThreadId)
+      : String(chatId);
+
   const route = resolveAgentRoute({
     cfg,
     channel: "telegram",
     accountId: account.accountId,
     peer: {
-      kind: isGroup ? "group" : "dm",
+      kind: isChannel ? "channel" : isGroup ? "group" : "dm",
       id: peerId,
     },
   });
+
   const baseSessionKey = route.sessionKey;
-  const dmThreadId = !isGroup ? resolvedThreadId : undefined;
-  const threadKeys =
-    dmThreadId != null
-      ? resolveThreadSessionKeys({ baseSessionKey, threadId: String(dmThreadId) })
-      : null;
-  const sessionKey = threadKeys?.sessionKey ?? baseSessionKey;
+  let sessionKey = baseSessionKey;
+  if (isChannel) {
+    sessionKey = `agent:${route.agentId}:telegram:channel:${chatId}`;
+  } else {
+    const dmThreadId = !isGroup ? resolvedThreadId : undefined;
+    const threadKeys =
+      dmThreadId != null
+        ? resolveThreadSessionKeys({ baseSessionKey, threadId: String(dmThreadId) })
+        : null;
+    sessionKey = threadKeys?.sessionKey ?? baseSessionKey;
+  }
+
   const mentionRegexes = buildMentionRegexes(cfg, route.agentId);
   const effectiveDmAllow = normalizeAllowFromWithStore({ allowFrom, storeAllowFrom });
   const groupAllowOverride = firstDefined(topicConfig?.allowFrom, groupConfig?.allowFrom);
@@ -181,7 +196,7 @@ export const buildTelegramMessageContext = async ({
   };
 
   // DM access control (secure defaults): "pairing" (default) / "allowlist" / "open" / "disabled"
-  if (!isGroup) {
+  if (!isGroup && !isChannel) {
     if (dmPolicy === "disabled") return null;
 
     if (dmPolicy !== "open") {
@@ -255,7 +270,7 @@ export const buildTelegramMessageContext = async ({
   }
 
   const botUsername = primaryCtx.me?.username?.toLowerCase();
-  const senderId = msg.from?.id ? String(msg.from.id) : "";
+  const senderId = msg.from?.id ? String(msg.from.id) : isChannel ? String(chatId) : "";
   const senderUsername = msg.from?.username ?? "";
   if (isGroup && hasGroupAllowOverride) {
     const allowed = isSenderAllowed({
@@ -349,11 +364,11 @@ export const buildTelegramMessageContext = async ({
   const implicitMention = botId != null && replyFromId === botId;
   const canDetectMention = Boolean(botUsername) || mentionRegexes.length > 0;
   const mentionGate = resolveMentionGatingWithBypass({
-    isGroup,
+    isGroup: isGroup || isChannel,
     requireMention: Boolean(requireMention),
     canDetectMention,
-    wasMentioned,
-    implicitMention: isGroup && Boolean(requireMention) && implicitMention,
+    wasMentioned: isChannel ? true : wasMentioned,
+    implicitMention: (isGroup || isChannel) && Boolean(requireMention) && implicitMention,
     hasAnyMention,
     allowTextCommands: true,
     hasControlCommand: hasControlCommandInMessage,
@@ -388,9 +403,9 @@ export const buildTelegramMessageContext = async ({
       ackReaction &&
       shouldAckReactionGate({
         scope: ackReactionScope,
-        isDirect: !isGroup,
-        isGroup,
-        isMentionableGroup: isGroup,
+        isDirect: !isGroup && !isChannel,
+        isGroup: isGroup || isChannel,
+        isMentionableGroup: isGroup || isChannel,
         requireMention: Boolean(requireMention),
         canDetectMention,
         effectiveWasMentioned,
@@ -429,10 +444,10 @@ export const buildTelegramMessageContext = async ({
         forwardOrigin.date ? ` at ${new Date(forwardOrigin.date * 1000).toISOString()}` : ""
       }]\n`
     : "";
-  const groupLabel = isGroup ? buildGroupLabel(msg, chatId, resolvedThreadId) : undefined;
-  const senderName = buildSenderName(msg);
-  const conversationLabel = isGroup
-    ? (groupLabel ?? `group:${chatId}`)
+  const groupLabel = isGroup || isChannel ? buildGroupLabel(msg, chatId, resolvedThreadId) : undefined;
+  const senderName = isChannel ? (msg.chat.title ?? "Channel") : buildSenderName(msg);
+  const conversationLabel = isGroup || isChannel
+    ? (groupLabel ?? (isChannel ? `channel:${chatId}` : `group:${chatId}`))
     : buildSenderLabel(msg, senderId || chatId);
   const storePath = resolveStorePath(cfg.session?.store, {
     agentId: route.agentId,
@@ -447,7 +462,7 @@ export const buildTelegramMessageContext = async ({
     from: conversationLabel,
     timestamp: msg.date ? msg.date * 1000 : undefined,
     body: `${forwardPrefix}${bodyText}${replySuffix}`,
-    chatType: isGroup ? "group" : "direct",
+    chatType: isChannel ? "channel" : isGroup ? "group" : "direct",
     sender: {
       name: senderName,
       username: senderUsername || undefined,
@@ -488,13 +503,17 @@ export const buildTelegramMessageContext = async ({
     Body: combinedBody,
     RawBody: rawBody,
     CommandBody: commandBody,
-    From: isGroup ? buildTelegramGroupFrom(chatId, resolvedThreadId) : `telegram:${chatId}`,
+    From: isChannel
+      ? `telegram:channel:${chatId}`
+      : isGroup
+        ? buildTelegramGroupFrom(chatId, resolvedThreadId)
+        : `telegram:${chatId}`,
     To: `telegram:${chatId}`,
     SessionKey: sessionKey,
     AccountId: route.accountId,
-    ChatType: isGroup ? "group" : "direct",
+    ChatType: isChannel ? "channel" : isGroup ? "group" : "direct",
     ConversationLabel: conversationLabel,
-    GroupSubject: isGroup ? (msg.chat.title ?? undefined) : undefined,
+    GroupSubject: isGroup || isChannel ? (msg.chat.title ?? undefined) : undefined,
     GroupSystemPrompt: isGroup ? groupSystemPrompt : undefined,
     SenderName: senderName,
     SenderId: senderId || undefined,
@@ -513,7 +532,7 @@ export const buildTelegramMessageContext = async ({
     ForwardedFromSignature: forwardOrigin?.fromSignature,
     ForwardedDate: forwardOrigin?.date ? forwardOrigin.date * 1000 : undefined,
     Timestamp: msg.date ? msg.date * 1000 : undefined,
-    WasMentioned: isGroup ? effectiveWasMentioned : undefined,
+    WasMentioned: isChannel ? true : isGroup ? effectiveWasMentioned : undefined,
     MediaPath: allMedia[0]?.path,
     MediaType: allMedia[0]?.contentType,
     MediaUrl: allMedia[0]?.path,
@@ -536,7 +555,7 @@ export const buildTelegramMessageContext = async ({
     storePath,
     sessionKey: ctxPayload.SessionKey ?? sessionKey,
     ctx: ctxPayload,
-    updateLastRoute: !isGroup
+    updateLastRoute: !isGroup && !isChannel
       ? {
           sessionKey: route.mainSessionKey,
           channel: "telegram",
