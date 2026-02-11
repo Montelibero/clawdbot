@@ -86,6 +86,13 @@ If you want to open access:
 - A Telegram Bot API channel owned by the Gateway.
 - Deterministic routing: replies go back to Telegram; the model never chooses channels.
 - DMs share the agent's main session; groups stay isolated (`agent:<agentId>:telegram:group:<chatId>`).
+- Channels (broadcasting) stay isolated (`agent:<agentId>:telegram:channel:<chatId>`).
+
+## Channels (Broadcasting)
+Clawdbot supports receiving and responding to posts in Telegram channels. To prevent noise and unauthorized access, the following rules apply:
+1. **Hashtag Filtering**: The bot only processes channel posts that contain a hashtag matching its numeric ID (e.g., `#8337636172`). You can find your bot's ID by DMing it or checking logs.
+2. **Access Control**: The channel ID (e.g., `-100...`) must be explicitly added to `allowFrom` or be covered by your `groupPolicy` settings.
+3. **Session Isolation**: Each channel has its own isolated session key: `agent:<agentId>:telegram:channel:<chatId>`.
 
 ## Setup (fast path)
 ### 1) Create a bot token (BotFather)
@@ -357,7 +364,7 @@ Telegram capabilities can be configured at two levels (object form shown above; 
 - `channels.telegram.accounts.<account>.capabilities`: Per-account capabilities that override the global defaults for that specific account.
 
 Use the global setting when all Telegram bots/accounts should behave the same. Use per-account configuration when different bots need different behaviors (for example, one account only handles DMs while another is allowed in groups).
-## Access control (DMs + groups)
+## Access control (DMs, groups, channels)
 
 ### DM access
 - Default: `channels.telegram.dmPolicy = "pairing"`. Unknown senders receive a pairing code; messages are ignored until approved (codes expire after 1 hour).
@@ -382,22 +389,22 @@ Alternate (official Bot API):
 Third-party (less private):
 - DM `@userinfobot` or `@getidsbot` and use the returned user id.
 
-### Group access
+### Group and Channel access
 
 Two independent controls:
 
-**1. Which groups are allowed** (group allowlist via `channels.telegram.groups`):
-- No `groups` config = all groups allowed
+**1. Which groups/channels are allowed** (allowlist via `channels.telegram.groups`):
+- No `groups` config = all groups/channels allowed
 - With `groups` config = only listed groups or `"*"` are allowed
-- Example: `"groups": { "-1001234567890": {}, "*": {} }` allows all groups
+- Example: `"groups": { "-1001234567890": {}, "*": {} }` allows all groups/channels
 
 **2. Which senders are allowed** (sender filtering via `channels.telegram.groupPolicy`):
-- `"open"` = all senders in allowed groups can message
-- `"allowlist"` = only senders in `channels.telegram.groupAllowFrom` can message
-- `"disabled"` = no group messages accepted at all
-Default is `groupPolicy: "allowlist"` (blocked unless you add `groupAllowFrom`).
+- `"open"` = all senders in allowed groups can message; for channels, the channel itself must be allowed.
+- `"allowlist"` = only senders in `channels.telegram.groupAllowFrom` can message; for channels, the channel ID must be in the allowlist.
+- `"disabled"` = no group/channel messages accepted at all.
+Default is `groupPolicy: "allowlist"` (blocked unless you add `groupAllowFrom` or `allowFrom`).
 
-Most users want: `groupPolicy: "allowlist"` + `groupAllowFrom` + specific groups listed in `channels.telegram.groups`
+Note: Channel posts additionally require a hashtag matching the bot's ID (e.g., `#8337636172`) to be processed.
 
 ## Long-polling vs webhook
 - Default: long-polling (no public URL required).

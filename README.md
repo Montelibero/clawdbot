@@ -17,7 +17,7 @@
 </p>
 
 **Clawdbot** is a *personal AI assistant* you run on your own devices.
-It answers you on the channels you already use (WhatsApp, Telegram Bot API, Telegram User MTProto [PRIMARILY FOR BOTS; USER ACCOUNTS NOT RECOMMENDED], Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
+It answers you on the channels you already use (WhatsApp, Telegram Bot API/Channels, Telegram User MTProto [PRIMARILY FOR BOTS; USER ACCOUNTS NOT RECOMMENDED], Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
 
 If you want a personal, single-user assistant that feels local, fast, and always-on, this is it.
 
@@ -116,7 +116,7 @@ Run `clawdbot doctor` to surface risky/misconfigured DM policies.
 ## Highlights
 
 - **[Local-first Gateway](https://docs.clawd.bot/gateway)** — single control plane for sessions, channels, tools, and events.
-- **[Multi-channel inbox](https://docs.clawd.bot/channels)** — WhatsApp, Telegram Bot API, Telegram User MTProto (primarily for bots; user accounts not recommended), Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, Microsoft Teams, Matrix, Zalo, Zalo Personal, WebChat, macOS, iOS/Android.
+- **[Multi-channel inbox](https://docs.clawd.bot/channels)** — WhatsApp, Telegram Bot API/Channels, Telegram User MTProto (primarily for bots; user accounts not recommended), Slack, Discord, Google Chat, Signal, iMessage, BlueBubbles, Microsoft Teams, Matrix, Zalo, Zalo Personal, WebChat, macOS, iOS/Android.
 - **[Multi-agent routing](https://docs.clawd.bot/gateway/configuration)** — route inbound channels/accounts/peers to isolated agents (workspaces + per-agent sessions).
 - **[Voice Wake](https://docs.clawd.bot/nodes/voicewake) + [Talk Mode](https://docs.clawd.bot/nodes/talk)** — always-on speech for macOS/iOS/Android with ElevenLabs.
 - **[Live Canvas](https://docs.clawd.bot/platforms/mac/canvas)** — agent-driven visual workspace with [A2UI](https://docs.clawd.bot/platforms/mac/canvas#canvas-a2ui).
