@@ -2,8 +2,10 @@ import { getChannelPlugin, normalizeChannelId } from "../../channels/plugins/ind
 import { formatCliCommand } from "../../cli/command-format.js";
 import type { ChannelId, ChannelOutboundTargetMode } from "../../channels/plugins/types.js";
 import type { ClawdbotConfig } from "../../config/config.js";
+import { loadConfig } from "../../config/config.js";
 import type { SessionEntry } from "../../config/sessions.js";
 import type { AgentDefaultsConfig } from "../../config/types.agent-defaults.js";
+import { readChannelAllowFromStore } from "../../pairing/pairing-store.js";
 import { deliveryContextFromSession } from "../../utils/delivery-context.js";
 import type {
   DeliverableMessageChannel,
@@ -171,12 +173,13 @@ export function resolveOutboundTarget(params: {
   };
 }
 
-export function resolveHeartbeatDeliveryTarget(params: {
+export async function resolveHeartbeatDeliveryTarget(params: {
   cfg: ClawdbotConfig;
   entry?: SessionEntry;
   heartbeat?: AgentDefaultsConfig["heartbeat"];
-}): OutboundTarget {
-  const { cfg, entry } = params;
+  env?: NodeJS.ProcessEnv;
+}): Promise<OutboundTarget> {
+  const { cfg, entry, env } = params;
   const heartbeat = params.heartbeat ?? cfg.agents?.defaults?.heartbeat;
   const rawTarget = heartbeat?.target;
   let target: HeartbeatTarget = "last";
@@ -204,6 +207,18 @@ export function resolveHeartbeatDeliveryTarget(params: {
     explicitTo: heartbeat?.to,
     mode: "heartbeat",
   });
+
+  // Fallback to the first owner in the pairing store if no recipient is resolved.
+  if (!resolvedTarget.to && (target !== "last" || resolvedTarget.channel)) {
+    const channelId =
+      resolvedTarget.channel ?? (target === "last" ? undefined : (target as ChannelId));
+    if (channelId) {
+      const owners = await readChannelAllowFromStore(channelId, env);
+      if (owners.length > 0) {
+        resolvedTarget.to = owners[0];
+      }
+    }
+  }
 
   if (!resolvedTarget.channel || !resolvedTarget.to) {
     return {

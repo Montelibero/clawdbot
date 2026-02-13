@@ -483,7 +483,7 @@ export async function runHeartbeatOnce(opts: {
 
   const { entry, sessionKey, storePath } = resolveHeartbeatSession(cfg, agentId, heartbeat);
   const previousUpdatedAt = entry?.updatedAt;
-  const delivery = resolveHeartbeatDeliveryTarget({ cfg, entry, heartbeat });
+  const delivery = await resolveHeartbeatDeliveryTarget({ cfg, entry, heartbeat });
   const visibility =
     delivery.channel !== "none"
       ? resolveHeartbeatVisibility({
