@@ -618,7 +618,8 @@ export const registerTelegramHandlers = ({
       if (!botId) return;
 
       const botTag = `#${botId}`;
-      if (!text.includes(botTag)) return;
+      const lowerText = text.toLowerCase();
+      if (!text.includes(botTag) && !lowerText.includes("#all")) return;
 
       const chatId = post.chat.id;
       const storeAllowFrom = await readTelegramAllowFromStore().catch(() => []);

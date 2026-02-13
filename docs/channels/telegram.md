@@ -90,7 +90,7 @@ If you want to open access:
 
 ## Channels (Broadcasting)
 Clawdbot supports receiving and responding to posts in Telegram channels. To prevent noise and unauthorized access, the following rules apply:
-1. **Hashtag Filtering**: The bot only processes channel posts that contain a hashtag matching its numeric ID (e.g., `#8337636172`). You can find your bot's ID by DMing it or checking logs.
+1. **Hashtag Filtering**: The bot only processes channel posts that contain a hashtag matching its numeric ID (e.g., `#8337636172`) or the general `#all` hashtag. You can find your bot's ID by DMing it or checking logs.
 2. **Access Control**: The channel ID (e.g., `-100...`) must be explicitly added to `allowFrom` or be covered by your `groupPolicy` settings.
 3. **Session Isolation**: Each channel has its own isolated session key: `agent:<agentId>:telegram:channel:<chatId>`.
 
@@ -404,7 +404,7 @@ Two independent controls:
 - `"disabled"` = no group/channel messages accepted at all.
 Default is `groupPolicy: "allowlist"` (blocked unless you add `groupAllowFrom` or `allowFrom`).
 
-Note: Channel posts additionally require a hashtag matching the bot's ID (e.g., `#8337636172`) to be processed.
+Note: Channel posts additionally require a hashtag matching the bot's ID (e.g., `#8337636172`) or `#all` to be processed.
 
 ## Long-polling vs webhook
 - Default: long-polling (no public URL required).
