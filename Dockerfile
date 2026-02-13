@@ -12,6 +12,18 @@ ENV UV_INSTALL_DIR=/usr/local/bin
 RUN curl -fsSL https://astral.sh/uv/install.sh | sh && \
     npm install -g @webhooksite/cli
 
+# Install system utilities and Python tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    jq \
+    zip \
+    unzip \
+    sqlite3 \
+    python3 \
+    python3-pip \
+    && pip3 install --break-system-packages --no-cache-dir csvkit \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 ARG GIT_COMMIT=""

@@ -41,7 +41,8 @@ export type TelegramForwardMetadata = {
 export type TelegramForwardedMessage = TelegramMessage & TelegramForwardMetadata;
 
 export type TelegramContext = {
-  message: TelegramMessage;
+  message?: TelegramMessage;
+  channelPost?: TelegramMessage;
   me?: { id?: number; username?: string };
   getFile: () => Promise<{
     file_path?: string;

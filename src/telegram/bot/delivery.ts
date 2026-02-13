@@ -233,7 +233,8 @@ export async function resolveMedia(
   token: string,
   proxyFetch?: typeof fetch,
 ): Promise<{ path: string; contentType?: string; placeholder: string } | null> {
-  const msg = ctx.message;
+  const msg = ctx.message ?? ctx.channelPost;
+  if (!msg) return null;
   const m =
     msg.photo?.[msg.photo.length - 1] ?? msg.video ?? msg.document ?? msg.audio ?? msg.voice;
   if (!m?.file_id) return null;
