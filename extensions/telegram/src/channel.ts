@@ -11,6 +11,7 @@ import {
   listTelegramDirectoryPeersFromConfig,
   looksLikeTelegramTargetId,
   migrateBaseNameToDefaultAccount,
+  missingTargetError,
   normalizeAccountId,
   normalizeTelegramMessagingTarget,
   PAIRING_APPROVED_MESSAGE,
@@ -253,6 +254,43 @@ export const telegramPlugin: ChannelPlugin<ResolvedTelegramAccount> = {
     chunker: (text, limit) => getTelegramRuntime().channel.text.chunkMarkdownText(text, limit),
     chunkerMode: "markdown",
     textChunkLimit: 4000,
+    resolveTarget: ({ to, allowFrom, mode }) => {
+      const trimmed = to?.trim() ?? "";
+      const allowListRaw = (allowFrom ?? []).map((entry) => String(entry).trim()).filter(Boolean);
+      const hasWildcard = allowListRaw.includes("*");
+      const allowList = allowListRaw.filter((entry) => entry !== "*");
+      const allowListLower = allowList.map((entry) => entry.toLowerCase());
+
+      if (trimmed) {
+        if (mode === "implicit" || mode === "heartbeat") {
+          const lowerTo = trimmed.toLowerCase();
+          const isAllowed =
+            allowList.includes(trimmed) ||
+            allowListLower.includes(lowerTo) ||
+            (lowerTo.startsWith("@") && allowListLower.includes(lowerTo.slice(1))) ||
+            (!lowerTo.startsWith("@") && allowListLower.includes(`@${lowerTo}`));
+
+          if (isAllowed) {
+            return { ok: true, to: trimmed };
+          }
+          if (allowList.length > 0) {
+            return { ok: true, to: allowList[0] };
+          }
+          if (hasWildcard) {
+            return { ok: true, to: trimmed };
+          }
+        }
+        return { ok: true, to: trimmed };
+      }
+
+      if (allowList.length > 0) {
+        return { ok: true, to: allowList[0] };
+      }
+      return {
+        ok: false,
+        error: missingTargetError("Telegram", "<chatId> or channels.telegram.allowFrom[0]"),
+      };
+    },
     sendText: async ({ to, text, accountId, deps, replyToId, threadId }) => {
       const send =
         deps?.sendTelegram ?? getTelegramRuntime().channel.telegram.sendMessageTelegram;

@@ -306,13 +306,15 @@ export const whatsappPlugin: ChannelPlugin<ResolvedWhatsAppAccount> = {
           return { ok: true, to: normalizedTo };
         }
         if (mode === "implicit" || mode === "heartbeat") {
-          if (hasWildcard || allowList.length === 0) {
-            return { ok: true, to: normalizedTo };
-          }
           if (allowList.includes(normalizedTo)) {
             return { ok: true, to: normalizedTo };
           }
-          return { ok: true, to: allowList[0] };
+          if (allowList.length > 0) {
+            return { ok: true, to: allowList[0] };
+          }
+          if (hasWildcard) {
+            return { ok: true, to: normalizedTo };
+          }
         }
         return { ok: true, to: normalizedTo };
       }
