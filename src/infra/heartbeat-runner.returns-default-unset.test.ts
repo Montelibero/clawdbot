@@ -132,7 +132,7 @@ describe("resolveHeartbeatDeliveryTarget", () => {
     updatedAt: Date.now(),
   };
 
-  it("respects target none", () => {
+  it("respects target none", async () => {
     const cfg: ClawdbotConfig = {
       agents: { defaults: { heartbeat: { target: "none" } } },
     };
@@ -282,6 +282,81 @@ describe("resolveHeartbeatDeliveryTarget", () => {
       lastChannel: "whatsapp",
       lastAccountId: undefined,
     });
+  });
+
+  it("cron reason prefers allowFrom owner over lastTo", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-cron-"));
+    const credDir = path.join(tmpDir, "credentials");
+    await fs.mkdir(credDir, { recursive: true });
+    await fs.writeFile(
+      path.join(credDir, "whatsapp-allowFrom.json"),
+      JSON.stringify({ version: 1, allowFrom: ["+1555"] }),
+    );
+    const cfg: ClawdbotConfig = {};
+    const entry = { ...baseEntry, lastChannel: "whatsapp" as const, lastTo: "+9999" };
+    const result = await resolveHeartbeatDeliveryTarget({
+      cfg,
+      entry,
+      reason: "cron:daily-check",
+      env: { CLAWDBOT_STATE_DIR: tmpDir },
+    });
+    expect(result.to).toBe("+1555");
+    expect(result.channel).toBe("whatsapp");
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("cron reason does NOT override explicit heartbeat.to", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-cron-"));
+    const credDir = path.join(tmpDir, "credentials");
+    await fs.mkdir(credDir, { recursive: true });
+    await fs.writeFile(
+      path.join(credDir, "whatsapp-allowFrom.json"),
+      JSON.stringify({ version: 1, allowFrom: ["+1555"] }),
+    );
+    const cfg: ClawdbotConfig = {
+      agents: { defaults: { heartbeat: { target: "whatsapp", to: "+7777" } } },
+    };
+    const result = await resolveHeartbeatDeliveryTarget({
+      cfg,
+      entry: baseEntry,
+      reason: "cron:test",
+      env: { CLAWDBOT_STATE_DIR: tmpDir },
+    });
+    expect(result.to).toBe("+7777");
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("non-cron reason still uses lastTo", async () => {
+    const cfg: ClawdbotConfig = {};
+    const entry = { ...baseEntry, lastChannel: "whatsapp" as const, lastTo: "+9999" };
+    const result = await resolveHeartbeatDeliveryTarget({
+      cfg,
+      entry,
+      reason: "interval",
+    });
+    expect(result.to).toBe("+9999");
+    expect(result.channel).toBe("whatsapp");
+  });
+
+  it("cron reason + empty allowFrom keeps lastTo", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-hb-cron-"));
+    const credDir = path.join(tmpDir, "credentials");
+    await fs.mkdir(credDir, { recursive: true });
+    await fs.writeFile(
+      path.join(credDir, "whatsapp-allowFrom.json"),
+      JSON.stringify({ version: 1, allowFrom: [] }),
+    );
+    const cfg: ClawdbotConfig = {};
+    const entry = { ...baseEntry, lastChannel: "whatsapp" as const, lastTo: "+9999" };
+    const result = await resolveHeartbeatDeliveryTarget({
+      cfg,
+      entry,
+      reason: "cron:test",
+      env: { CLAWDBOT_STATE_DIR: tmpDir },
+    });
+    expect(result.to).toBe("+9999");
+    expect(result.channel).toBe("whatsapp");
+    await fs.rm(tmpDir, { recursive: true, force: true });
   });
 });
 

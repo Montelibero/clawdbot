@@ -177,6 +177,7 @@ export async function resolveHeartbeatDeliveryTarget(params: {
   cfg: ClawdbotConfig;
   entry?: SessionEntry;
   heartbeat?: AgentDefaultsConfig["heartbeat"];
+  reason?: string;
   env?: NodeJS.ProcessEnv;
 }): Promise<OutboundTarget> {
   const { cfg, entry, env } = params;
@@ -207,6 +208,19 @@ export async function resolveHeartbeatDeliveryTarget(params: {
     explicitTo: heartbeat?.to,
     mode: "heartbeat",
   });
+
+  // For cron-triggered heartbeats, prefer the pairing store owner over session.lastTo.
+  const isCronTrigger = params.reason?.startsWith("cron:");
+  if (isCronTrigger && !heartbeat?.to?.trim() && resolvedTarget.to) {
+    const channelId =
+      resolvedTarget.channel ?? (target === "last" ? undefined : (target as ChannelId));
+    if (channelId) {
+      const owners = await readChannelAllowFromStore(channelId, env);
+      if (owners.length > 0) {
+        resolvedTarget.to = owners[0];
+      }
+    }
+  }
 
   // Fallback to the first owner in the pairing store if no recipient is resolved.
   if (!resolvedTarget.to && (target !== "last" || resolvedTarget.channel)) {
