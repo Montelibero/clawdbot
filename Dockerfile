@@ -24,6 +24,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Install RTK (Rust Token Killer) for shell output compression
+ARG RTK_VERSION=v0.18.0
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in \
+      amd64) RTK_TARGET="x86_64-unknown-linux-gnu" ;; \
+      arm64) RTK_TARGET="aarch64-unknown-linux-gnu" ;; \
+      *) echo "RTK: unsupported arch $ARCH, skipping" && exit 0 ;; \
+    esac && \
+    curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/${RTK_VERSION}/rtk-${RTK_TARGET}.tar.gz" \
+      | tar -xz -C /usr/local/bin rtk && \
+    chmod +x /usr/local/bin/rtk
+
 WORKDIR /app
 
 ARG GIT_COMMIT=""

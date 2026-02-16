@@ -1,0 +1,14 @@
+{
+  "name": "@clawdbot/rtk",
+  "version": "2026.1.25",
+  "type": "module",
+  "description": "RTK (Rust Token Killer) integration for shell output compression",
+  "clawdbot": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "clawdbot": ">=2026.1.25"
+  }
+}

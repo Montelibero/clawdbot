@@ -1,0 +1,26 @@
+{
+  "id": "rtk",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean" },
+      "promptInjection": { "type": "boolean" },
+      "persistCompression": { "type": "boolean" }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enabled",
+      "help": "Master switch for RTK integration (default: true)"
+    },
+    "promptInjection": {
+      "label": "Prompt Injection",
+      "help": "Inject RTK usage instructions into agent prompt (default: true)"
+    },
+    "persistCompression": {
+      "label": "Persist Compression",
+      "help": "Compress exec tool output before persisting to session (default: true)"
+    }
+  }
+}
