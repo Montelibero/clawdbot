@@ -195,6 +195,7 @@ const execSchema = Type.Object({
 export type ExecToolDetails =
   | {
       status: "running";
+      command?: string;
       sessionId: string;
       pid?: number;
       startedAt: number;
@@ -203,6 +204,7 @@ export type ExecToolDetails =
     }
   | {
       status: "completed" | "failed";
+      command?: string;
       exitCode: number | null;
       durationMs: number;
       aggregated: string;
@@ -1429,6 +1431,7 @@ export function createExecTool(
             ],
             details: {
               status: "running",
+              command: params.command,
               sessionId: run.session.id,
               pid: run.session.pid ?? undefined,
               startedAt: run.startedAt,
@@ -1475,6 +1478,7 @@ export function createExecTool(
               ],
               details: {
                 status: "completed",
+                command: params.command,
                 exitCode: outcome.exitCode ?? 0,
                 durationMs: outcome.durationMs,
                 aggregated: outcome.aggregated,
