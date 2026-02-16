@@ -8,6 +8,7 @@ import type { ClientToolDefinition } from "./pi-embedded-runner/run/params.js";
 import { logDebug, logError } from "../logger.js";
 import { normalizeToolName } from "./tool-policy.js";
 import { jsonResult } from "./tools/common.js";
+import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
 
 // biome-ignore lint/suspicious/noExplicitAny: TypeBox schema type from pi-agent-core uses a different module instance.
 type AnyAgentTool = AgentTool<any, unknown>;
@@ -42,8 +43,58 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
       ): Promise<AgentToolResult<unknown>> => {
         // KNOWN: pi-coding-agent `ToolDefinition.execute` has a different signature/order
         // than pi-agent-core `AgentTool.execute`. This adapter keeps our existing tools intact.
+
+        const hookRunner = getGlobalHookRunner();
+        const toolCtx = { toolName: normalizedName, toolCallId };
+
+        // Run before_tool_call hook
+        if (hookRunner?.hasHooks("before_tool_call")) {
+          try {
+            const beforeResult = await hookRunner.runBeforeToolCall(
+              { toolName: normalizedName, params: params as Record<string, unknown> },
+              toolCtx,
+            );
+
+            // Check if tool should be blocked
+            if (beforeResult?.block) {
+              return jsonResult({
+                status: "blocked",
+                tool: normalizedName,
+                reason: beforeResult.blockReason ?? "Blocked by plugin",
+              });
+            }
+
+            // Apply modified params if provided
+            if (beforeResult?.params) {
+              params = beforeResult.params;
+            }
+          } catch (hookErr) {
+            logError(`[hooks] before_tool_call failed for ${normalizedName}: ${String(hookErr)}`);
+          }
+        }
+
+        const startTime = performance.now();
         try {
-          return await tool.execute(toolCallId, params, signal, onUpdate);
+          const result = await tool.execute(toolCallId, params, signal, onUpdate);
+
+          // Run after_tool_call hook
+          if (hookRunner?.hasHooks("after_tool_call")) {
+            try {
+              await hookRunner.runAfterToolCall(
+                {
+                  toolName: normalizedName,
+                  params: params as Record<string, unknown>,
+                  result: result as unknown,
+                  durationMs: Math.round(performance.now() - startTime),
+                },
+                toolCtx,
+              );
+            } catch (hookErr) {
+              logError(`[hooks] after_tool_call failed for ${normalizedName}: ${String(hookErr)}`);
+            }
+          }
+
+          return result;
         } catch (err) {
           if (signal?.aborted) throw err;
           const name =
@@ -56,11 +107,32 @@ export function toToolDefinitions(tools: AnyAgentTool[]): ToolDefinition[] {
             logDebug(`tools: ${normalizedName} failed stack:\n${described.stack}`);
           }
           logError(`[tools] ${normalizedName} failed: ${described.message}`);
-          return jsonResult({
+
+          const errorResult = jsonResult({
             status: "error",
             tool: normalizedName,
             error: described.message,
           });
+
+          // Run after_tool_call hook for errors too
+          if (hookRunner?.hasHooks("after_tool_call")) {
+            try {
+              await hookRunner.runAfterToolCall(
+                {
+                  toolName: normalizedName,
+                  params: params as Record<string, unknown>,
+                  result: errorResult as unknown,
+                  error: described.message,
+                  durationMs: Math.round(performance.now() - startTime),
+                },
+                toolCtx,
+              );
+            } catch (hookErr) {
+              logError(`[hooks] after_tool_call failed for ${normalizedName}: ${String(hookErr)}`);
+            }
+          }
+
+          return errorResult;
         }
       },
     } satisfies ToolDefinition;
