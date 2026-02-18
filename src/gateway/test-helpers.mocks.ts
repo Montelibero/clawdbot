@@ -232,14 +232,32 @@ vi.mock("@mariozechner/pi-coding-agent", async () => {
     "@mariozechner/pi-coding-agent",
   );
 
-  return {
-    ...actual,
-    discoverModels: (...args: unknown[]) => {
-      if (!piSdkMock.enabled) {
-        return (actual.discoverModels as (...args: unknown[]) => unknown)(...args);
-      }
+  class MockModelRegistry {
+    getAll() {
       piSdkMock.discoverCalls += 1;
       return piSdkMock.models;
+    }
+    getAvailable() {
+      return piSdkMock.models;
+    }
+    find(provider: string, modelId: string) {
+      return piSdkMock.models.find((m) => m.provider === provider && m.id === modelId);
+    }
+  }
+
+  const OriginalModelRegistry = actual.ModelRegistry;
+
+  return {
+    ...actual,
+    ModelRegistry: class extends OriginalModelRegistry {
+      constructor(...args: ConstructorParameters<typeof OriginalModelRegistry>) {
+        if (piSdkMock.enabled) {
+          // Return a mock instance instead — bypass super with Object.create trick
+          const mock = new MockModelRegistry();
+          return mock as unknown as InstanceType<typeof OriginalModelRegistry>;
+        }
+        super(...args);
+      }
     },
   };
 });

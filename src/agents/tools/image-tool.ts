@@ -8,7 +8,7 @@ import {
   complete,
   type Model,
 } from "@mariozechner/pi-ai";
-import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
+import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 
 import type { ClawdbotConfig } from "../../config/config.js";
@@ -233,8 +233,12 @@ async function runImagePrompt(params: {
     : undefined;
 
   await ensureClawdbotModelsJson(effectiveCfg, params.agentDir);
-  const authStorage = discoverAuthStorage(params.agentDir);
-  const modelRegistry = discoverModels(authStorage, params.agentDir);
+  const nodePath = await import("node:path");
+  const authStorage = AuthStorage.create(nodePath.join(params.agentDir, "auth.json"));
+  const modelRegistry = new ModelRegistry(
+    authStorage,
+    nodePath.join(params.agentDir, "models.json"),
+  );
 
   const result = await runWithImageModelFallback({
     cfg: effectiveCfg,

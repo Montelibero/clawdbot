@@ -63,14 +63,11 @@ export async function loadModelCatalog(params?: {
       // we must not poison the cache with a rejected promise (otherwise all channel handlers
       // will keep failing until restart).
       const piSdk = await importPiSdk();
+      const nodePath = await import("node:path");
       const agentDir = resolveClawdbotAgentDir();
-      const authStorage = piSdk.discoverAuthStorage(agentDir);
-      const registry = piSdk.discoverModels(authStorage, agentDir) as
-        | {
-            getAll: () => Array<DiscoveredModel>;
-          }
-        | Array<DiscoveredModel>;
-      const entries = Array.isArray(registry) ? registry : registry.getAll();
+      const authStorage = piSdk.AuthStorage.create(nodePath.join(agentDir, "auth.json"));
+      const registry = new piSdk.ModelRegistry(authStorage, nodePath.join(agentDir, "models.json"));
+      const entries = registry.getAll() as Array<DiscoveredModel>;
       for (const entry of entries) {
         const id = String(entry?.id ?? "").trim();
         if (!id) continue;

@@ -1,5 +1,5 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
-import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
+import { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 
 import { resolveClawdbotAgentDir } from "../../agents/agent-paths.js";
 import type { AuthProfileStore } from "../../agents/auth-profiles.js";
@@ -41,8 +41,9 @@ const hasAuthForProvider = (provider: string, cfg: ClawdbotConfig, authStore: Au
 export async function loadModelRegistry(cfg: ClawdbotConfig) {
   await ensureClawdbotModelsJson(cfg);
   const agentDir = resolveClawdbotAgentDir();
-  const authStorage = discoverAuthStorage(agentDir);
-  const registry = discoverModels(authStorage, agentDir);
+  const path = await import("node:path");
+  const authStorage = AuthStorage.create(path.join(agentDir, "auth.json"));
+  const registry = new ModelRegistry(authStorage, path.join(agentDir, "models.json"));
   const models = registry.getAll() as Model<Api>[];
   const availableModels = registry.getAvailable() as Model<Api>[];
   const availableKeys = new Set(availableModels.map((model) => modelKey(model.provider, model.id)));
