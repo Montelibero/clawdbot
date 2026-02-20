@@ -8,7 +8,7 @@ import { loadConfig } from "../config/config.js";
 import { writeConfigFile } from "../config/io.js";
 import { danger, logVerbose, warn } from "../globals.js";
 import { resolveMedia } from "./bot/delivery.js";
-import { resolveTelegramForumThreadId } from "./bot/helpers.js";
+import { hasBotMention, resolveTelegramForumThreadId } from "./bot/helpers.js";
 import type { TelegramMessage } from "./bot/types.js";
 import { firstDefined, isSenderAllowed, normalizeAllowFromWithStore } from "./bot-access.js";
 import { MEDIA_GROUP_TIMEOUT_MS, type MediaGroupEntry } from "./bot-updates.js";
@@ -619,7 +619,11 @@ export const registerTelegramHandlers = ({
 
       const botTag = `#${botId}`;
       const lowerText = text.toLowerCase();
-      if (!text.includes(botTag) && !lowerText.includes("#all")) return;
+      const isMentionedByTag = text.includes(botTag) || lowerText.includes("#all");
+      const botUsername = ctx.me?.username?.toLowerCase();
+      const isMentionedByUsername = botUsername ? hasBotMention(post, botUsername) : false;
+      const isReplyToBot = post.reply_to_message?.from?.id === botId;
+      if (!isMentionedByTag && !isMentionedByUsername && !isReplyToBot) return;
 
       const chatId = post.chat.id;
       const storeAllowFrom = await readTelegramAllowFromStore().catch(() => []);
