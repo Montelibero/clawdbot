@@ -6,6 +6,7 @@ import type {
   MarkdownConfig,
   OutboundRetryConfig,
   ReplyToMode,
+  TopicPolicy,
 } from "./types.base.js";
 import type { ChannelHeartbeatVisibilityConfig } from "./types.channels.js";
 import type { DmConfig, ProviderCommandsConfig } from "./types.messages.js";
@@ -140,6 +141,8 @@ export type TelegramGroupConfig = {
   tools?: GroupToolPolicyConfig;
   /** If specified, only load these skills for this group (when no topic). Omit = all skills; empty = no skills. */
   skills?: string[];
+  /** Controls which topics the bot responds to: "open" (default) = all, "allowlist" = only those in topics. */
+  topicPolicy?: TopicPolicy;
   /** Per-topic configuration (key is message_thread_id as string) */
   topics?: Record<string, TelegramTopicConfig>;
   /** If false, disable the bot for this group (and its topics). */

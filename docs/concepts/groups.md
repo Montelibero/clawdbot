@@ -39,6 +39,7 @@ If you want...
 | Disable all group replies | `groupPolicy: "disabled"` |
 | Only specific groups | `groups: { "<group-id>": { ... } }` (no `"*"` key) |
 | Only you can trigger in groups | `groupPolicy: "allowlist"`, `groupAllowFrom: ["+1555..."]` |
+| Only specific topics in a Telegram forum | `groups.<id>.topicPolicy: "allowlist"` + list topics in `topics` |
 
 ## Session keys
 - Group sessions use `agent:<agentId>:<channel>:group:<id>` session keys (rooms/channels use `agent:<agentId>:<channel>:channel:<id>`).

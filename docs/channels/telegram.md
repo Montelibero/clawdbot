@@ -286,6 +286,30 @@ Telegram forum topics include a `message_thread_id` per message. Clawdbot:
 - Topic-specific configuration is available under `channels.telegram.groups.<chatId>.topics.<threadId>` (skills, allowlists, auto-reply, system prompts, disable).
 - Topic configs inherit group settings (requireMention, allowlists, skills, prompts, enabled) unless overridden per topic.
 
+### Topic policy
+
+By default the bot responds in all topics of a forum group (`topicPolicy: "open"`). Set `topicPolicy: "allowlist"` to restrict the bot to topics explicitly listed in `topics` -- unlisted topics are silently ignored.
+
+```json5
+{
+  channels: {
+    telegram: {
+      groups: {
+        "-1001234567890": {
+          topicPolicy: "allowlist",
+          topics: {
+            "42": {},                                    // bot responds here
+            "99": { systemPrompt: "Tech support only" }  // and here
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+A topic listed with `enabled: false` is still blocked (the existing per-topic disable takes precedence).
+
 Private chats can include `message_thread_id` in some edge cases. Clawdbot keeps the DM session key unchanged, but still uses the thread id for replies/draft streaming when it is present.
 
 ## Inline Buttons
@@ -577,6 +601,7 @@ Provider options:
   - `channels.telegram.groups.<id>.allowFrom`: per-group sender allowlist override.
   - `channels.telegram.groups.<id>.systemPrompt`: extra system prompt for the group.
   - `channels.telegram.groups.<id>.enabled`: disable the group when `false`.
+  - `channels.telegram.groups.<id>.topicPolicy`: `open | allowlist` (default: `open`). When `allowlist`, only topics listed in `topics` are processed.
   - `channels.telegram.groups.<id>.topics.<threadId>.*`: per-topic overrides (same fields as group).
   - `channels.telegram.groups.<id>.topics.<threadId>.requireMention`: per-topic mention gating override.
 - `channels.telegram.capabilities.inlineButtons`: `off | dm | group | all | allowlist` (default: allowlist).

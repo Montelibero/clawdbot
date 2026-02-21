@@ -1006,6 +1006,7 @@ Set `channels.telegram.configWrites: false` to block Telegram-initiated config w
         "-1001234567890": {
           allowFrom: ["@admin"],
           systemPrompt: "Keep answers brief.",
+          topicPolicy: "open",                  // open (default) | allowlist
           topics: {
             "99": {
               requireMention: false,

@@ -230,6 +230,14 @@ export const registerTelegramHandlers = ({
           );
           return;
         }
+        // Topic allowlist: when topicPolicy is "allowlist", only process messages
+        // from topics explicitly listed in the group's topics config.
+        if (isForum && groupConfig?.topicPolicy === "allowlist" && !topicConfig) {
+          logVerbose(
+            `Blocked telegram topic ${chatId}:${resolvedThreadId ?? "unknown"} (topicPolicy: allowlist, topic not listed)`,
+          );
+          return;
+        }
         if (typeof groupAllowOverride !== "undefined") {
           const allowed =
             senderId &&
@@ -407,6 +415,14 @@ export const registerTelegramHandlers = ({
         if (topicConfig?.enabled === false) {
           logVerbose(
             `Blocked telegram topic ${chatId} (${resolvedThreadId ?? "unknown"}) (topic disabled)`,
+          );
+          return;
+        }
+        // Topic allowlist: when topicPolicy is "allowlist", only process messages
+        // from topics explicitly listed in the group's topics config.
+        if (isForum && groupConfig?.topicPolicy === "allowlist" && !topicConfig) {
+          logVerbose(
+            `Blocked telegram topic ${chatId}:${resolvedThreadId ?? "unknown"} (topicPolicy: allowlist, topic not listed)`,
           );
           return;
         }
