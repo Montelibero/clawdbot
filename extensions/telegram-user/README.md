@@ -133,6 +133,42 @@ Call any high-level TelegramClient method:
 }
 ```
 
+## Multi-account
+
+Run multiple MTProto accounts by adding `accounts` to the config. Each account gets its own
+credentials, session, and policy overrides:
+
+```json5
+{
+  channels: {
+    "telegram-user": {
+      apiId: 123456,        // shared default (can be overridden per account)
+      apiHash: "YOUR_API_HASH",
+      accounts: {
+        main: {
+          botToken: "123456:ABC...",
+          dmPolicy: "pairing"
+        },
+        monitoring: {
+          botToken: "987654:XYZ...",
+          dmPolicy: "allowlist",
+          allowFrom: ["admin-user-id"]
+        }
+      }
+    }
+  },
+  plugins: {
+    entries: { "telegram-user": { enabled: true } }
+  }
+}
+```
+
+- `default` account is used when `accountId` is omitted (CLI + routing).
+- Env variables (`TELEGRAM_USER_API_ID`, etc.) only apply to the **default** account.
+- Base channel settings apply to all accounts unless overridden per account.
+- Use `bindings[].match.accountId` to route each account to a different agent.
+- Sessions are stored per account: `~/.clawdbot/credentials/telegram-user/<accountId>.session`.
+
 ## Notes
 
 - PRIMARY USE CASE: MTProto bot auth via `botToken`.

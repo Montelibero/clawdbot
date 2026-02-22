@@ -77,6 +77,33 @@ Login notes:
 - Sessions are stored under `~/.clawdbot/credentials/telegram-user/`.
 - 2FA password logins are not handled yet; use a prebuilt session string if needed (NOT RECOMMENDED).
 
+Multi-account support: use `channels.telegram-user.accounts` with per-account credentials. See [`gateway/configuration`](/gateway/configuration#telegramaccounts--discordaccounts--slackaccounts--signalaccounts--imessageaccounts) for the shared pattern.
+
+```json5
+{
+  channels: {
+    "telegram-user": {
+      apiId: 123456,
+      apiHash: "YOUR_API_HASH",
+      accounts: {
+        main: {
+          botToken: "123456:ABC...",
+          dmPolicy: "pairing"
+        },
+        monitoring: {
+          botToken: "987654:XYZ...",
+          dmPolicy: "allowlist",
+          allowFrom: ["admin-user-id"]
+        }
+      }
+    }
+  },
+  plugins: {
+    entries: { "telegram-user": { enabled: true } }
+  }
+}
+```
+
 If you want to open access:
 1) You must explicitly change `dmPolicy` and/or allowlists.
 2) Confirm twice that you understand the risk of unsolicited messages.
