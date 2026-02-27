@@ -23,6 +23,9 @@ const api = {
   setWebhook: vi.fn(),
   deleteWebhook: vi.fn(),
 };
+// Shared abort holder — reset in beforeEach, mutated by runSpy
+const abortHolder: { ac: AbortController } = { ac: new AbortController() };
+
 const { initSpy, runSpy, loadConfig } = vi.hoisted(() => ({
   initSpy: vi.fn(async () => undefined),
   runSpy: vi.fn(() => ({
@@ -83,14 +86,19 @@ describe("monitorTelegramProvider (grammY)", () => {
       channels: { telegram: {} },
     });
     initSpy.mockClear();
-    runSpy.mockClear();
+    // Abort the monitor on first run() so the polling loop exits cleanly
+    abortHolder.ac = new AbortController();
+    runSpy.mockImplementation(() => {
+      abortHolder.ac.abort();
+      return { task: () => Promise.resolve(), stop: vi.fn() };
+    });
   });
 
   it("processes a DM and sends reply", async () => {
     Object.values(api).forEach((fn) => {
       fn?.mockReset?.();
     });
-    await monitorTelegramProvider({ token: "tok" });
+    await monitorTelegramProvider({ token: "tok", abortSignal: abortHolder.ac.signal });
     expect(handlers.message).toBeDefined();
     await handlers.message?.({
       message: {
@@ -108,12 +116,16 @@ describe("monitorTelegramProvider (grammY)", () => {
 
   it("uses agent maxConcurrent for runner concurrency", async () => {
     runSpy.mockClear();
+    runSpy.mockImplementation(() => {
+      abortHolder.ac.abort();
+      return { task: () => Promise.resolve(), stop: vi.fn() };
+    });
     loadConfig.mockReturnValue({
       agents: { defaults: { maxConcurrent: 3 } },
       channels: { telegram: {} },
     });
 
-    await monitorTelegramProvider({ token: "tok" });
+    await monitorTelegramProvider({ token: "tok", abortSignal: abortHolder.ac.signal });
 
     expect(runSpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -128,7 +140,7 @@ describe("monitorTelegramProvider (grammY)", () => {
     Object.values(api).forEach((fn) => {
       fn?.mockReset?.();
     });
-    await monitorTelegramProvider({ token: "tok" });
+    await monitorTelegramProvider({ token: "tok", abortSignal: abortHolder.ac.signal });
     await handlers.message?.({
       message: {
         message_id: 2,

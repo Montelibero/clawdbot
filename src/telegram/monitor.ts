@@ -51,6 +51,11 @@ const TELEGRAM_POLL_RESTART_POLICY = {
   jitter: 0.25,
 };
 
+/** No updates for 10 minutes → consider the connection stale. */
+const STALE_TIMEOUT_MS = 10 * 60 * 1000;
+/** Check staleness every 60 seconds. */
+const STALE_CHECK_INTERVAL_MS = 60 * 1000;
+
 const isGetUpdatesConflict = (err: unknown) => {
   if (!err || typeof err !== "object") return false;
   const typed = err as {
@@ -89,9 +94,14 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
   let lastUpdateId = await readTelegramUpdateOffset({
     accountId: account.accountId,
   });
+  let lastActivityAt: number | null = null;
+  let restartAttempts = 0;
+
   const persistUpdateId = async (updateId: number) => {
     if (lastUpdateId !== null && updateId <= lastUpdateId) return;
     lastUpdateId = updateId;
+    lastActivityAt = Date.now();
+    restartAttempts = 0;
     try {
       await writeTelegramUpdateOffset({
         accountId: account.accountId,
@@ -134,38 +144,55 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
 
   // Use grammyjs/runner for concurrent update processing
   const log = opts.runtime?.log ?? console.log;
-  let restartAttempts = 0;
+  const aborted = () => opts.abortSignal?.aborted === true;
 
-  while (!opts.abortSignal?.aborted) {
+  while (!aborted()) {
     const runner = run(bot, createTelegramRunnerOptions(cfg));
     const stopOnAbort = () => {
-      if (opts.abortSignal?.aborted) {
-        void runner.stop();
-      }
+      if (aborted()) void runner.stop();
     };
     opts.abortSignal?.addEventListener("abort", stopOnAbort, { once: true });
+
+    // Stale watchdog: resolve when no updates arrive for STALE_TIMEOUT_MS
+    let staleResolve: (() => void) | null = null;
+    const stalePromise = new Promise<void>((resolve) => {
+      staleResolve = resolve;
+    });
+    const staleTimer = setInterval(() => {
+      if (!lastActivityAt) return; // no updates yet — skip
+      if (Date.now() - lastActivityAt > STALE_TIMEOUT_MS) {
+        const minutesIdle = Math.floor((Date.now() - lastActivityAt) / 60_000);
+        log(`Telegram polling stale (no updates in ${minutesIdle}m); restarting.`);
+        staleResolve?.();
+      }
+    }, STALE_CHECK_INTERVAL_MS);
+
     try {
-      // runner.task() returns a promise that resolves when the runner stops
-      await runner.task();
-      return;
+      await Promise.race([runner.task(), stalePromise]);
+      // If we reach here without abort, runner stopped unexpectedly or stale timeout fired
+      if (aborted()) return;
+      log("Telegram polling stopped unexpectedly; restarting.");
     } catch (err) {
-      if (opts.abortSignal?.aborted) {
-        throw err;
-      }
-      if (!isGetUpdatesConflict(err)) {
-        throw err;
-      }
-      restartAttempts += 1;
-      const delayMs = computeBackoff(TELEGRAM_POLL_RESTART_POLICY, restartAttempts);
-      log(`Telegram getUpdates conflict; retrying in ${formatDurationMs(delayMs)}.`);
-      try {
-        await sleepWithAbort(delayMs, opts.abortSignal);
-      } catch (sleepErr) {
-        if (opts.abortSignal?.aborted) return;
-        throw sleepErr;
+      if (aborted()) throw err;
+      if (isGetUpdatesConflict(err)) {
+        log("Telegram getUpdates conflict; restarting.");
+      } else {
+        log(`Telegram polling error: ${err}; restarting.`);
       }
     } finally {
+      clearInterval(staleTimer);
+      runner.stop();
       opts.abortSignal?.removeEventListener("abort", stopOnAbort);
+    }
+
+    // Backoff before restart
+    restartAttempts += 1;
+    const delayMs = computeBackoff(TELEGRAM_POLL_RESTART_POLICY, restartAttempts);
+    log(`Telegram poll restart ${restartAttempts} in ${formatDurationMs(delayMs)}.`);
+    try {
+      await sleepWithAbort(delayMs, opts.abortSignal);
+    } catch {
+      if (aborted()) return;
     }
   }
 }
