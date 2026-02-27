@@ -167,8 +167,11 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
       }
     }, STALE_CHECK_INTERVAL_MS);
 
+    // Capture runner.task() so we can absorb its rejection after stop()
+    const runnerTask = runner.task();
+
     try {
-      await Promise.race([runner.task(), stalePromise]);
+      await Promise.race([runnerTask, stalePromise]);
       // If we reach here without abort, runner stopped unexpectedly or stale timeout fired
       if (aborted()) return;
       log("Telegram polling stopped unexpectedly; restarting.");
@@ -182,6 +185,9 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     } finally {
       clearInterval(staleTimer);
       runner.stop();
+      // Absorb the runner rejection after stop() to prevent unhandled promise rejection
+      // (stop() aborts the pending fetch, causing an AbortError on runnerTask)
+      runnerTask?.catch(() => {});
       opts.abortSignal?.removeEventListener("abort", stopOnAbort);
     }
 
