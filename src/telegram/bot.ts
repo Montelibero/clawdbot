@@ -452,6 +452,20 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     logger,
   });
 
+  // Safety net: catch unhandled errors from middleware so grammY doesn't
+  // dump a full stack trace + "No error handler was set!" wall of text.
+  bot.catch = (err) => {
+    const msg = err?.error ?? err;
+    const text = msg instanceof Error ? msg.message : String(msg);
+    if (/session store lock/i.test(text)) {
+      runtime.error?.(
+        danger(`[telegram] session store lock timeout (stale lock file?) — message dropped`),
+      );
+    } else {
+      runtime.error?.(danger(`[telegram] unhandled middleware error: ${text}`));
+    }
+  };
+
   return bot;
 }
 

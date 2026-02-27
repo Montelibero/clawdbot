@@ -619,7 +619,9 @@ export const registerTelegramHandlers = ({
         botUsername: ctx.me?.username,
       });
     } catch (err) {
-      runtime.error?.(danger(`handler failed: ${String(err)}`));
+      runtime.error?.(
+        danger(`[telegram] handler failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
     }
   });
 
