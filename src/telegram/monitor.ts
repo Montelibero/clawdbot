@@ -160,11 +160,20 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     });
     const staleTimer = setInterval(() => {
       if (!lastActivityAt) return; // no updates yet — skip
-      if (Date.now() - lastActivityAt > STALE_TIMEOUT_MS) {
-        const minutesIdle = Math.floor((Date.now() - lastActivityAt) / 60_000);
-        log(`Telegram polling stale (no updates in ${minutesIdle}m); restarting.`);
-        staleResolve?.();
-      }
+      if (Date.now() - lastActivityAt <= STALE_TIMEOUT_MS) return;
+
+      // Probe connection before concluding it's dead
+      bot.api
+        .getMe()
+        .then(() => {
+          // Connection alive — bot is just idle, not stale
+          lastActivityAt = Date.now();
+        })
+        .catch(() => {
+          const minutesIdle = Math.floor((Date.now() - (lastActivityAt ?? 0)) / 60_000);
+          log(`Telegram polling stale (getMe failed after ${minutesIdle}m idle); restarting.`);
+          staleResolve?.();
+        });
     }, STALE_CHECK_INTERVAL_MS);
 
     // Capture runner.task() so we can absorb its rejection after stop()
