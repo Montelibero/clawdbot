@@ -42,8 +42,10 @@ Use these in chat:
 
 - `/status` → **emoji‑rich status card** with the session model, context usage,
   last response input/output tokens, and **estimated cost** (API key only).
-- `/usage off|tokens|full` → appends a **per-response usage footer** to every reply.
+- `/usage off|tokens|full` → controls the **per-response usage footer**.
+  - **Enabled by default** (`tokens` mode) — every reply shows input/output token counts.
   - Persists per session (stored as `responseUsage`).
+  - Override the global default with `agents.defaults.responseUsageDefault` (`off`, `tokens`, or `full`).
   - OAuth auth **hides cost** (tokens only).
 - `/usage cost` → shows a local cost summary from Clawdbot session logs.
 
