@@ -4,6 +4,7 @@ const { botApi, botCtorSpy } = vi.hoisted(() => ({
   botApi: {
     sendMessage: vi.fn(),
     sendPhoto: vi.fn(),
+    getChat: vi.fn().mockResolvedValue({}),
   },
   botCtorSpy: vi.fn(),
 }));
@@ -66,7 +67,7 @@ describe("sendMessageTelegram caption splitting", () => {
       message_id: 71,
       chat: { id: chatId },
     });
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -90,6 +91,7 @@ describe("sendMessageTelegram caption splitting", () => {
     // Then text sent as separate message (HTML formatting)
     expect(sendMessage).toHaveBeenCalledWith(chatId, longText, {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
     });
     // Returns the text message ID (the "main" content)
     expect(res.messageId).toBe("71");
@@ -105,7 +107,7 @@ describe("sendMessageTelegram caption splitting", () => {
       chat: { id: chatId },
     });
     const sendMessage = vi.fn();
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -140,7 +142,7 @@ describe("sendMessageTelegram caption splitting", () => {
       message_id: 90,
       chat: { id: chatId },
     });
-    const api = { sendPhoto } as unknown as {
+    const api = { sendPhoto, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
     };
 
@@ -174,7 +176,7 @@ describe("sendMessageTelegram caption splitting", () => {
       message_id: 74,
       chat: { id: chatId },
     });
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -202,6 +204,7 @@ describe("sendMessageTelegram caption splitting", () => {
     // Text message also includes thread params (HTML formatting)
     expect(sendMessage).toHaveBeenCalledWith(chatId, longText, {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
       reply_to_message_id: 500,
     });
@@ -219,7 +222,7 @@ describe("sendMessageTelegram caption splitting", () => {
       message_id: 76,
       chat: { id: chatId },
     });
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -244,6 +247,7 @@ describe("sendMessageTelegram caption splitting", () => {
     // Follow-up text has the reply_markup
     expect(sendMessage).toHaveBeenCalledWith(chatId, longText, {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       reply_markup: {
         inline_keyboard: [[{ text: "Click me", callback_data: "action:click" }]],
       },
@@ -262,7 +266,7 @@ describe("sendMessageTelegram caption splitting", () => {
       message_id: 79,
       chat: { id: chatId },
     });
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -289,6 +293,7 @@ describe("sendMessageTelegram caption splitting", () => {
     });
     expect(sendMessage).toHaveBeenCalledWith(chatId, longText, {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
       reply_to_message_id: 500,
       reply_markup: {
@@ -306,7 +311,7 @@ describe("sendMessageTelegram caption splitting", () => {
       chat: { id: chatId },
     });
     const sendMessage = vi.fn().mockRejectedValue(new Error("400: Bad Request: chat not found"));
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -335,7 +340,7 @@ describe("sendMessageTelegram caption splitting", () => {
       chat: { id: chatId },
     });
     const sendMessage = vi.fn();
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };
@@ -368,7 +373,7 @@ describe("sendMessageTelegram caption splitting", () => {
       chat: { id: chatId },
     });
     const sendMessage = vi.fn();
-    const api = { sendPhoto, sendMessage } as unknown as {
+    const api = { sendPhoto, sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
       sendMessage: typeof sendMessage;
     };

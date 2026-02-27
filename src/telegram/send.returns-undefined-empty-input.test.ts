@@ -4,6 +4,7 @@ const { botApi, botCtorSpy } = vi.hoisted(() => ({
   botApi: {
     sendMessage: vi.fn(),
     setMessageReaction: vi.fn(),
+    getChat: vi.fn().mockResolvedValue({}),
   },
   botCtorSpy: vi.fn(),
 }));
@@ -134,7 +135,7 @@ describe("sendMessageTelegram", () => {
         message_id: 42,
         chat: { id: chatId },
       });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -146,8 +147,11 @@ describe("sendMessageTelegram", () => {
 
     expect(sendMessage).toHaveBeenNthCalledWith(1, chatId, "<i>oops</i>", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
     });
-    expect(sendMessage).toHaveBeenNthCalledWith(2, chatId, "_oops_");
+    expect(sendMessage).toHaveBeenNthCalledWith(2, chatId, "_oops_", {
+      link_preview_options: { is_disabled: true },
+    });
     expect(res.chatId).toBe(chatId);
     expect(res.messageId).toBe("42");
   });
@@ -158,7 +162,7 @@ describe("sendMessageTelegram", () => {
       message_id: 7,
       chat: { id: chatId },
     });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -186,7 +190,7 @@ describe("sendMessageTelegram", () => {
         message_id: 42,
         chat: { id: chatId },
       });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -239,7 +243,7 @@ describe("sendMessageTelegram", () => {
       message_id: 1,
       chat: { id: "123" },
     });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -250,6 +254,7 @@ describe("sendMessageTelegram", () => {
 
     expect(sendMessage).toHaveBeenCalledWith("123", "hi", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
     });
   });
 
@@ -257,7 +262,7 @@ describe("sendMessageTelegram", () => {
     const chatId = "123";
     const err = new Error("400: Bad Request: chat not found");
     const sendMessage = vi.fn().mockRejectedValue(err);
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -282,7 +287,7 @@ describe("sendMessageTelegram", () => {
         message_id: 1,
         chat: { id: chatId },
       });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
     const setTimeoutSpy = vi.spyOn(global, "setTimeout");
@@ -303,7 +308,7 @@ describe("sendMessageTelegram", () => {
   it("does not retry on non-transient errors", async () => {
     const chatId = "123";
     const sendMessage = vi.fn().mockRejectedValue(new Error("400: Bad Request"));
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -323,7 +328,7 @@ describe("sendMessageTelegram", () => {
       message_id: 9,
       chat: { id: chatId },
     });
-    const api = { sendAnimation } as unknown as {
+    const api = { sendAnimation, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendAnimation: typeof sendAnimation;
     };
 
@@ -356,7 +361,7 @@ describe("sendMessageTelegram", () => {
       message_id: 11,
       chat: { id: chatId },
     });
-    const api = { sendAudio, sendVoice } as unknown as {
+    const api = { sendAudio, sendVoice, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendAudio: typeof sendAudio;
       sendVoice: typeof sendVoice;
     };
@@ -390,7 +395,7 @@ describe("sendMessageTelegram", () => {
       message_id: 13,
       chat: { id: chatId },
     });
-    const api = { sendAudio, sendVoice } as unknown as {
+    const api = { sendAudio, sendVoice, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendAudio: typeof sendAudio;
       sendVoice: typeof sendVoice;
     };
@@ -429,7 +434,7 @@ describe("sendMessageTelegram", () => {
       message_id: 15,
       chat: { id: chatId },
     });
-    const api = { sendAudio, sendVoice } as unknown as {
+    const api = { sendAudio, sendVoice, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendAudio: typeof sendAudio;
       sendVoice: typeof sendVoice;
     };
@@ -460,7 +465,7 @@ describe("sendMessageTelegram", () => {
       message_id: 55,
       chat: { id: chatId },
     });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -472,6 +477,7 @@ describe("sendMessageTelegram", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(chatId, "hello forum", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
     });
   });
@@ -482,7 +488,7 @@ describe("sendMessageTelegram", () => {
       message_id: 55,
       chat: { id: chatId },
     });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -493,6 +499,7 @@ describe("sendMessageTelegram", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(chatId, "hello forum", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
     });
   });
@@ -503,7 +510,7 @@ describe("sendMessageTelegram", () => {
       message_id: 56,
       chat: { id: chatId },
     });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -515,6 +522,7 @@ describe("sendMessageTelegram", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(chatId, "reply text", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       reply_to_message_id: 100,
     });
   });
@@ -525,7 +533,7 @@ describe("sendMessageTelegram", () => {
       message_id: 57,
       chat: { id: chatId },
     });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -538,6 +546,7 @@ describe("sendMessageTelegram", () => {
 
     expect(sendMessage).toHaveBeenCalledWith(chatId, "forum reply", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
       reply_to_message_id: 500,
     });

@@ -4,6 +4,7 @@ const { botApi, botCtorSpy } = vi.hoisted(() => ({
   botApi: {
     sendMessage: vi.fn(),
     setMessageReaction: vi.fn(),
+    getChat: vi.fn().mockResolvedValue({}),
   },
   botCtorSpy: vi.fn(),
 }));
@@ -44,7 +45,7 @@ describe("buildInlineKeyboard", () => {
         message_id: 60,
         chat: { id: chatId },
       });
-    const api = { sendMessage } as unknown as {
+    const api = { sendMessage, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendMessage: typeof sendMessage;
     };
 
@@ -58,11 +59,13 @@ describe("buildInlineKeyboard", () => {
     // First call: with HTML + thread params
     expect(sendMessage).toHaveBeenNthCalledWith(1, chatId, "<i>bad markdown</i>", {
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
       reply_to_message_id: 100,
     });
     // Second call: plain text BUT still with thread params (critical!)
     expect(sendMessage).toHaveBeenNthCalledWith(2, chatId, "_bad markdown_", {
+      link_preview_options: { is_disabled: true },
       message_thread_id: 271,
       reply_to_message_id: 100,
     });
@@ -75,7 +78,7 @@ describe("buildInlineKeyboard", () => {
       message_id: 58,
       chat: { id: chatId },
     });
-    const api = { sendPhoto } as unknown as {
+    const api = { sendPhoto, getChat: vi.fn().mockResolvedValue({}) } as unknown as {
       sendPhoto: typeof sendPhoto;
     };
 
