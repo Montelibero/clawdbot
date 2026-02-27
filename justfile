@@ -7,7 +7,7 @@ test *args:
 
 # Build (tsc + post-build scripts)
 build:
-    {{_nvm}} && rtk pnpm build
+    {{_nvm}} && pnpm build
 
 # Lint
 lint:
