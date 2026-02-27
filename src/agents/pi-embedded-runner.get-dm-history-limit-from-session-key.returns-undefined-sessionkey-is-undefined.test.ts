@@ -141,15 +141,16 @@ describe("getDmHistoryLimitFromSessionKey", () => {
       9,
     );
   });
-  it("returns undefined for non-dm session kinds", () => {
+  it("returns default limit for non-dm session kinds", () => {
     const config = {
       channels: {
         telegram: { dmHistoryLimit: 15 },
         slack: { dmHistoryLimit: 10 },
       },
     } as ClawdbotConfig;
-    expect(getDmHistoryLimitFromSessionKey("agent:beta:slack:channel:c1", config)).toBeUndefined();
-    expect(getDmHistoryLimitFromSessionKey("telegram:slash:123", config)).toBeUndefined();
+    // Non-DM sessions get a default limit (10) to prevent unbounded history growth
+    expect(getDmHistoryLimitFromSessionKey("agent:beta:slack:channel:c1", config)).toBe(10);
+    expect(getDmHistoryLimitFromSessionKey("telegram:slash:123", config)).toBe(10);
   });
   it("returns undefined for unknown provider", () => {
     const config = {
