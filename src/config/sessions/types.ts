@@ -72,6 +72,7 @@ export type SessionEntry = {
   outputTokens?: number;
   totalTokens?: number;
   lastSizeWarningAt?: number;
+  lastUsageWarningAt?: number;
   modelProvider?: string;
   model?: string;
   contextTokens?: number;

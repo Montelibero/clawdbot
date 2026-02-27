@@ -36,8 +36,14 @@ import { resolveBlockStreamingCoalescing } from "./block-streaming.js";
 import { createFollowupRunner } from "./followup-runner.js";
 import { enqueueFollowupRun, type FollowupRun, type QueueSettings } from "./queue.js";
 import { createReplyToModeFilterForChannel, resolveReplyToMode } from "./reply-threading.js";
+import { isRoutableChannel, routeReply } from "./route-reply.js";
 import { persistSessionUsageUpdate } from "./session-usage.js";
 import { incrementCompactionCount } from "./session-updates.js";
+import {
+  checkHourlyTokenThreshold,
+  checkSessionTokenThreshold,
+  recordTokenUsage,
+} from "./usage-threshold.js";
 import type { TypingController } from "./typing.js";
 import { createTypingSignaler } from "./typing-mode.js";
 import { emitDiagnosticEvent, isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
@@ -388,6 +394,53 @@ export async function runReplyAgent(params: {
       cliSessionId,
     });
 
+    // Record for hourly token accumulator
+    const turnTokens = (usage?.input ?? 0) + (usage?.output ?? 0);
+    if (turnTokens > 0 && sessionKey) recordTokenUsage(sessionKey, turnTokens);
+
+    // Per-session threshold warning
+    if (
+      !isHeartbeat &&
+      replyToChannel &&
+      isRoutableChannel(replyToChannel) &&
+      sessionCtx.OriginatingTo
+    ) {
+      const sessionWarning = checkSessionTokenThreshold({ sessionEntry: activeSessionEntry });
+      if (sessionWarning) {
+        if (activeSessionEntry) activeSessionEntry.lastUsageWarningAt = Date.now();
+        if (storePath && sessionKey) {
+          await updateSessionStoreEntry({
+            storePath,
+            sessionKey,
+            update: async () => ({ lastUsageWarningAt: Date.now() }),
+          });
+        }
+        await routeReply({
+          payload: { text: sessionWarning },
+          channel: replyToChannel,
+          to: sessionCtx.OriginatingTo,
+          sessionKey,
+          accountId: sessionCtx.AccountId,
+          threadId: sessionCtx.MessageThreadId,
+          cfg,
+        });
+      }
+
+      // Hourly global threshold warning
+      const hourlyWarning = checkHourlyTokenThreshold();
+      if (hourlyWarning) {
+        await routeReply({
+          payload: { text: hourlyWarning },
+          channel: replyToChannel,
+          to: sessionCtx.OriginatingTo,
+          sessionKey,
+          accountId: sessionCtx.AccountId,
+          threadId: sessionCtx.MessageThreadId,
+          cfg,
+        });
+      }
+    }
+
     // Drain any late tool/block deliveries before deciding there's "nothing to send".
     // Otherwise, a late typing trigger (e.g. from a tool callback) can outlive the run and
     // keep the typing indicator stuck.
@@ -458,7 +511,10 @@ export async function runReplyAgent(params: {
     const responseUsageRaw =
       activeSessionEntry?.responseUsage ??
       (sessionKey ? activeSessionStore?.[sessionKey]?.responseUsage : undefined);
-    const responseUsageMode = resolveResponseUsageMode(responseUsageRaw);
+    const responseUsageMode = resolveResponseUsageMode(
+      responseUsageRaw,
+      cfg.agents?.defaults?.responseUsageDefault,
+    );
     if (responseUsageMode !== "off" && hasNonzeroUsage(usage)) {
       const authMode = resolveModelAuthMode(providerUsed, cfg);
       const showCost = authMode === "api-key";
