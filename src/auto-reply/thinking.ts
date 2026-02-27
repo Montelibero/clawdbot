@@ -119,7 +119,7 @@ export function resolveResponseUsageMode(
   raw?: string | null,
   configDefault?: string | null,
 ): UsageDisplayLevel {
-  return normalizeUsageDisplay(raw) ?? normalizeUsageDisplay(configDefault) ?? "off";
+  return normalizeUsageDisplay(raw) ?? normalizeUsageDisplay(configDefault) ?? "tokens";
 }
 
 // Normalize elevated flags used to toggle elevated bash permissions.
