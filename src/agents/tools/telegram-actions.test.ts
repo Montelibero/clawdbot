@@ -3,25 +3,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClawdbotConfig } from "../../config/config.js";
 import { handleTelegramAction, readTelegramButtons } from "./telegram-actions.js";
 
-const reactMessageTelegram = vi.fn(async () => ({ ok: true }));
-const sendMessageTelegram = vi.fn(async () => ({
-  messageId: "789",
-  chatId: "123",
+const telegramMocks = vi.hoisted(() => ({
+  reactMessageTelegram: vi.fn(async () => ({ ok: true })),
+  sendMessageTelegram: vi.fn(async () => ({
+    messageId: "789",
+    chatId: "123",
+  })),
+  editMessageTelegram: vi.fn(async () => ({ ok: true })),
+  deleteMessageTelegram: vi.fn(async () => ({ ok: true })),
 }));
-const deleteMessageTelegram = vi.fn(async () => ({ ok: true }));
 const originalToken = process.env.TELEGRAM_BOT_TOKEN;
 
 vi.mock("../../telegram/send.js", () => ({
-  reactMessageTelegram: (...args: unknown[]) => reactMessageTelegram(...args),
-  sendMessageTelegram: (...args: unknown[]) => sendMessageTelegram(...args),
-  deleteMessageTelegram: (...args: unknown[]) => deleteMessageTelegram(...args),
+  reactMessageTelegram: telegramMocks.reactMessageTelegram,
+  sendMessageTelegram: telegramMocks.sendMessageTelegram,
+  editMessageTelegram: telegramMocks.editMessageTelegram,
+  deleteMessageTelegram: telegramMocks.deleteMessageTelegram,
 }));
 
 describe("handleTelegramAction", () => {
   beforeEach(() => {
-    reactMessageTelegram.mockClear();
-    sendMessageTelegram.mockClear();
-    deleteMessageTelegram.mockClear();
+    telegramMocks.reactMessageTelegram.mockClear();
+    telegramMocks.sendMessageTelegram.mockClear();
+    telegramMocks.editMessageTelegram.mockClear();
+    telegramMocks.deleteMessageTelegram.mockClear();
     process.env.TELEGRAM_BOT_TOKEN = "tok";
   });
 
@@ -46,7 +51,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(reactMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.reactMessageTelegram).toHaveBeenCalledWith(
       "123",
       456,
       "✅",
@@ -67,7 +72,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(reactMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.reactMessageTelegram).toHaveBeenCalledWith(
       "123",
       456,
       "✅",
@@ -88,7 +93,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(reactMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.reactMessageTelegram).toHaveBeenCalledWith(
       "123",
       456,
       "",
@@ -110,7 +115,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(reactMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.reactMessageTelegram).toHaveBeenCalledWith(
       "123",
       456,
       "✅",
@@ -187,7 +192,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalledWith(
       "@testchannel",
       "Hello, Telegram!",
       expect.objectContaining({ token: "tok", mediaUrl: undefined }),
@@ -211,7 +216,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalledWith(
       "123456",
       "Check this image!",
       expect.objectContaining({
@@ -233,7 +238,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalledWith(
       "123456",
       "",
       expect.objectContaining({
@@ -288,11 +293,51 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(deleteMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.deleteMessageTelegram).toHaveBeenCalledWith(
       "123",
       456,
       expect.objectContaining({ token: "tok" }),
     );
+  });
+
+  it("edits a message", async () => {
+    const cfg = {
+      channels: { telegram: { botToken: "tok" } },
+    } as ClawdbotConfig;
+    await handleTelegramAction(
+      {
+        action: "editMessage",
+        chatId: "123",
+        messageId: 456,
+        content: "updated",
+      },
+      cfg,
+    );
+    expect(telegramMocks.editMessageTelegram).toHaveBeenCalledWith(
+      "123",
+      456,
+      "updated",
+      expect.objectContaining({ token: "tok" }),
+    );
+  });
+
+  it("respects editMessage gating", async () => {
+    const cfg = {
+      channels: {
+        telegram: { botToken: "tok", actions: { editMessage: false } },
+      },
+    } as ClawdbotConfig;
+    await expect(
+      handleTelegramAction(
+        {
+          action: "editMessage",
+          chatId: "123",
+          messageId: 456,
+          content: "updated",
+        },
+        cfg,
+      ),
+    ).rejects.toThrow(/Telegram editMessage is disabled/);
   });
 
   it("respects deleteMessage gating", async () => {
@@ -341,7 +386,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalled();
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalled();
   });
 
   it("blocks inline buttons when scope is off", async () => {
@@ -397,7 +442,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalled();
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalled();
   });
 
   it("allows inline buttons in groups with topic targets", async () => {
@@ -415,7 +460,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalled();
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalled();
   });
 
   it("sends messages with inline keyboard buttons when enabled", async () => {
@@ -433,7 +478,7 @@ describe("handleTelegramAction", () => {
       },
       cfg,
     );
-    expect(sendMessageTelegram).toHaveBeenCalledWith(
+    expect(telegramMocks.sendMessageTelegram).toHaveBeenCalledWith(
       "@testchannel",
       "Choose",
       expect.objectContaining({

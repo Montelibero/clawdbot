@@ -544,6 +544,75 @@ type TelegramDeleteOpts = {
   retry?: RetryConfig;
 };
 
+type TelegramEditOpts = {
+  token?: string;
+  accountId?: string;
+  verbose?: boolean;
+  api?: Bot["api"];
+  retry?: RetryConfig;
+  textMode?: "markdown" | "html";
+};
+
+export async function editMessageTelegram(
+  chatIdInput: string | number,
+  messageIdInput: string | number,
+  text: string,
+  opts: TelegramEditOpts = {},
+): Promise<{ ok: true }> {
+  if (!text.trim()) {
+    throw new Error("Message text must be non-empty for Telegram edits");
+  }
+  const cfg = loadConfig();
+  const account = resolveTelegramAccount({
+    cfg,
+    accountId: opts.accountId,
+  });
+  const token = resolveToken(opts.token, account);
+  const chatId = normalizeChatId(String(chatIdInput));
+  const messageId = normalizeMessageId(messageIdInput);
+  const client = resolveTelegramClientOptions(account);
+  const api = opts.api ?? new Bot(token, client ? { client } : undefined).api;
+  const request = createTelegramRetryRunner({
+    retry: opts.retry,
+    configRetry: account.config.retry,
+    verbose: opts.verbose,
+  });
+  const logHttpError = createTelegramHttpLogger(cfg);
+  const requestWithDiag = <T>(fn: () => Promise<T>, label?: string) =>
+    request(fn, label).catch((err) => {
+      logHttpError(label ?? "request", err);
+      throw err;
+    });
+
+  const tableMode = resolveMarkdownTableMode({
+    cfg,
+    channel: "telegram",
+    accountId: account.accountId,
+  });
+  const textMode = opts.textMode ?? "markdown";
+  const htmlText = renderTelegramHtmlText(text, { textMode, tableMode });
+
+  await requestWithDiag(
+    () => api.editMessageText(chatId, messageId, htmlText, { parse_mode: "HTML" }),
+    "editMessageText",
+  ).catch(async (err) => {
+    const errText = formatErrorMessage(err);
+    if (!PARSE_ERR_RE.test(errText)) throw err;
+    if (opts.verbose) {
+      console.warn(
+        `telegram HTML parse failed in editMessageText, retrying as plain text: ${errText}`,
+      );
+    }
+    await requestWithDiag(
+      () => api.editMessageText(chatId, messageId, text),
+      "editMessageText-plain",
+    );
+  });
+
+  logVerbose(`[telegram] Edited message ${messageId} in chat ${chatId}`);
+  return { ok: true };
+}
+
 export async function deleteMessageTelegram(
   chatIdInput: string | number,
   messageIdInput: string | number,

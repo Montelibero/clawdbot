@@ -16,6 +16,7 @@ import { createSessionsHistoryTool } from "./tools/sessions-history-tool.js";
 import { createSessionsListTool } from "./tools/sessions-list-tool.js";
 import { createSessionsSendTool } from "./tools/sessions-send-tool.js";
 import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
+import { createTelegramRawTool } from "./tools/telegram-raw-tool.js";
 import { createWebFetchTool, createWebSearchTool } from "./tools/web-tools.js";
 import { createTtsTool } from "./tools/tts-tool.js";
 
@@ -95,9 +96,14 @@ export function createClawdbotTools(options?: {
       config: options?.config,
       currentChannelId: options?.currentChannelId,
       currentChannelProvider: options?.agentChannel,
-      currentThreadTs: options?.currentThreadTs ?? (options?.agentThreadId != null ? String(options.agentThreadId) : undefined),
+      currentThreadTs:
+        options?.currentThreadTs ??
+        (options?.agentThreadId != null ? String(options.agentThreadId) : undefined),
       replyToMode: options?.replyToMode,
       hasRepliedRef: options?.hasRepliedRef,
+    }),
+    createTelegramRawTool({
+      config: options?.config,
     }),
     createTtsTool({
       agentChannel: options?.agentChannel,

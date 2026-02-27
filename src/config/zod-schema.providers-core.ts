@@ -118,10 +118,12 @@ export const TelegramAccountSchemaBase = z
       .object({
         reactions: z.boolean().optional(),
         sendMessage: z.boolean().optional(),
+        editMessage: z.boolean().optional(),
         deleteMessage: z.boolean().optional(),
       })
       .strict()
       .optional(),
+    allowRawApi: z.boolean().optional(),
     reactionNotifications: z.enum(["off", "own", "all"]).optional(),
     reactionLevel: z.enum(["off", "ack", "minimal", "extensive"]).optional(),
     heartbeat: ChannelHeartbeatVisibilitySchema,

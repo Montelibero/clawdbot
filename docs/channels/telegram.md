@@ -527,10 +527,13 @@ Outbound Telegram API calls retry on transient network/429 errors with exponenti
 
 ## Agent tool (messages + reactions)
 - Tool: `telegram` with `sendMessage` action (`to`, `content`, optional `mediaUrl`, `replyToMessageId`, `messageThreadId`).
+- Tool: `telegram` with `editMessage` action (`chatId`, `messageId`, `content`).
 - Tool: `telegram` with `react` action (`chatId`, `messageId`, `emoji`).
 - Tool: `telegram` with `deleteMessage` action (`chatId`, `messageId`).
+- Tool: `telegram_raw` with `callApi` action (`apiMethod`, `args`) for advanced Bot API calls.
 - Reaction removal semantics: see [/tools/reactions](/tools/reactions).
-- Tool gating: `channels.telegram.actions.reactions`, `channels.telegram.actions.sendMessage`, `channels.telegram.actions.deleteMessage` (default: enabled).
+- Tool gating: `channels.telegram.actions.reactions`, `channels.telegram.actions.sendMessage`, `channels.telegram.actions.editMessage`, `channels.telegram.actions.deleteMessage` (default: enabled).
+- Raw API access is disabled by default; enable with `channels.telegram.allowRawApi=true` and pass `acknowledgeRisk=true` on every `telegram_raw` call.
 
 ## Reaction notifications
 
@@ -646,7 +649,9 @@ Provider options:
 - `channels.telegram.webhookPath`: local webhook path (default `/telegram-webhook`).
 - `channels.telegram.actions.reactions`: gate Telegram tool reactions.
 - `channels.telegram.actions.sendMessage`: gate Telegram tool message sends.
+- `channels.telegram.actions.editMessage`: gate Telegram tool message edits.
 - `channels.telegram.actions.deleteMessage`: gate Telegram tool message deletes.
+- `channels.telegram.allowRawApi`: allow advanced raw Telegram Bot API calls via `telegram_raw`.
 - `channels.telegram.reactionNotifications`: `off | own | all` — control which reactions trigger system events (default: `own` when not set).
 - `channels.telegram.reactionLevel`: `off | ack | minimal | extensive` — control agent's reaction capability (default: `minimal` when not set).
 

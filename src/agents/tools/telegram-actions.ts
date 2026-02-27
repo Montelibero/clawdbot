@@ -3,6 +3,7 @@ import type { ClawdbotConfig } from "../../config/config.js";
 import { resolveTelegramReactionLevel } from "../../telegram/reaction-level.js";
 import {
   deleteMessageTelegram,
+  editMessageTelegram,
   reactMessageTelegram,
   sendMessageTelegram,
 } from "../../telegram/send.js";
@@ -206,6 +207,33 @@ export async function handleTelegramAction(
       accountId: accountId ?? undefined,
     });
     return jsonResult({ ok: true, deleted: true });
+  }
+
+  if (action === "editMessage") {
+    if (!isActionEnabled("editMessage")) {
+      throw new Error("Telegram editMessage is disabled.");
+    }
+    const chatId = readStringOrNumberParam(params, "chatId", {
+      required: true,
+    });
+    const messageId = readNumberParam(params, "messageId", {
+      required: true,
+      integer: true,
+    });
+    const content = readStringParam(params, "content", {
+      required: true,
+    });
+    const token = resolveTelegramToken(cfg, { accountId }).token;
+    if (!token) {
+      throw new Error(
+        "Telegram bot token missing. Set TELEGRAM_BOT_TOKEN or channels.telegram.botToken.",
+      );
+    }
+    await editMessageTelegram(chatId ?? "", messageId ?? 0, content, {
+      token,
+      accountId: accountId ?? undefined,
+    });
+    return jsonResult({ ok: true, edited: true });
   }
 
   throw new Error(`Unsupported Telegram action: ${action}`);

@@ -638,6 +638,9 @@ const FIELD_HELP: Record<string, string> = {
   "channels.telegram.retry.jitter": "Jitter factor (0-1) applied to Telegram retry delays.",
   "channels.telegram.timeoutSeconds":
     "Max seconds before Telegram API requests are aborted (default: 500 per grammY).",
+  "channels.telegram.actions.editMessage": "Gate Telegram tool message edits.",
+  "channels.telegram.allowRawApi":
+    "Allow advanced raw Telegram Bot API calls via telegram_raw tool (default: false).",
   "channels.whatsapp.dmPolicy":
     'Direct message access control ("pairing" recommended). "open" requires channels.whatsapp.allowFrom=["*"].',
   "channels.whatsapp.selfChatMode": "Same-phone setup (bot uses your personal WhatsApp number).",

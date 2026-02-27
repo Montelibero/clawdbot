@@ -40,6 +40,7 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
     const gate = createActionGate(cfg.channels?.telegram?.actions);
     const actions = new Set<ChannelMessageActionName>(["send"]);
     if (gate("reactions")) actions.add("react");
+    if (gate("editMessage")) actions.add("edit");
     if (gate("deleteMessage")) actions.add("delete");
     return Array.from(actions);
   },
@@ -106,6 +107,32 @@ export const telegramMessageActions: ChannelMessageActionAdapter = {
           action: "deleteMessage",
           chatId,
           messageId: Number(messageId),
+          accountId: accountId ?? undefined,
+        },
+        cfg,
+      );
+    }
+
+    if (action === "edit") {
+      const chatId =
+        readStringOrNumberParam(params, "chatId") ??
+        readStringOrNumberParam(params, "channelId") ??
+        readStringParam(params, "to", { required: true });
+      const messageId = readStringParam(params, "messageId", {
+        required: true,
+      });
+      const content =
+        readStringParam(params, "message", { allowEmpty: true }) ??
+        readStringParam(params, "caption", { allowEmpty: true });
+      if (!content?.trim()) {
+        throw new Error("message required");
+      }
+      return await handleTelegramAction(
+        {
+          action: "editMessage",
+          chatId,
+          messageId: Number(messageId),
+          content,
           accountId: accountId ?? undefined,
         },
         cfg,

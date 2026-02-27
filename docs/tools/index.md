@@ -348,6 +348,7 @@ Notes:
 - `send` routes WhatsApp via the Gateway; other channels go direct.
 - `poll` uses the Gateway for WhatsApp and MS Teams; Discord polls go direct.
 - When a message tool call is bound to an active chat session, sends are constrained to that session’s target to avoid cross-context leaks.
+- Telegram also exposes `telegram_raw` (advanced): direct raw Bot API calls when `channels.telegram.allowRawApi=true` and `acknowledgeRisk=true` is provided.
 
 ### `cron`
 Manage Gateway cron jobs and wakeups.

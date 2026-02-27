@@ -15,6 +15,7 @@ import type { GroupToolPolicyConfig } from "./types.tools.js";
 export type TelegramActionConfig = {
   reactions?: boolean;
   sendMessage?: boolean;
+  editMessage?: boolean;
   deleteMessage?: boolean;
 };
 
@@ -102,6 +103,8 @@ export type TelegramAccountConfig = {
   webhookPath?: string;
   /** Per-action tool gating (default: true for all). */
   actions?: TelegramActionConfig;
+  /** Allow advanced raw Telegram Bot API calls via telegram_raw tool. */
+  allowRawApi?: boolean;
   /**
    * Controls which user reactions trigger notifications:
    * - "off" (default): ignore all reactions

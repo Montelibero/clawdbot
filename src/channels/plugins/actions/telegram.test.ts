@@ -3,18 +3,46 @@ import { describe, expect, it, vi } from "vitest";
 import type { ClawdbotConfig } from "../../../config/config.js";
 import { telegramMessageActions } from "./telegram.js";
 
-const handleTelegramAction = vi.fn(async () => ({ ok: true }));
+const handleTelegramActionMock = vi.hoisted(() => vi.fn(async () => ({ ok: true })));
 
 vi.mock("../../../agents/tools/telegram-actions.js", () => ({
-  handleTelegramAction: (...args: unknown[]) => handleTelegramAction(...args),
+  handleTelegramAction: handleTelegramActionMock,
 }));
 
 describe("telegramMessageActions", () => {
-  it("allows media-only sends and passes asVoice", async () => {
-    handleTelegramAction.mockClear();
+  it("maps edit action to telegram editMessage", async () => {
+    handleTelegramActionMock.mockClear();
     const cfg = { channels: { telegram: { botToken: "tok" } } } as ClawdbotConfig;
 
-    await telegramMessageActions.handleAction({
+    await telegramMessageActions.handleAction!({
+      channel: "telegram",
+      action: "edit",
+      params: {
+        to: "123",
+        messageId: "456",
+        message: "updated",
+      },
+      cfg,
+      accountId: undefined,
+    });
+
+    expect(handleTelegramActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "editMessage",
+        chatId: "123",
+        messageId: 456,
+        content: "updated",
+      }),
+      cfg,
+    );
+  });
+
+  it("allows media-only sends and passes asVoice", async () => {
+    handleTelegramActionMock.mockClear();
+    const cfg = { channels: { telegram: { botToken: "tok" } } } as ClawdbotConfig;
+
+    await telegramMessageActions.handleAction!({
+      channel: "telegram",
       action: "send",
       params: {
         to: "123",
@@ -25,7 +53,7 @@ describe("telegramMessageActions", () => {
       accountId: undefined,
     });
 
-    expect(handleTelegramAction).toHaveBeenCalledWith(
+    expect(handleTelegramActionMock).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sendMessage",
         to: "123",
