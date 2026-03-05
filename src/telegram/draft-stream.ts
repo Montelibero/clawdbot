@@ -1,4 +1,5 @@
 import type { Bot } from "grammy";
+import { formatErrorMessage } from "../infra/errors.js";
 
 const TELEGRAM_DRAFT_MAX_CHARS = 4096;
 const DEFAULT_THROTTLE_MS = 300;
@@ -9,6 +10,24 @@ export type TelegramDraftStream = {
   stop: () => void;
 };
 
+function isSendMessageDraftUnsupportedError(err: unknown): boolean {
+  const text = formatErrorMessage(err).toLowerCase();
+  if (!text) return false;
+
+  // grammY errors typically include: "Call to 'sendMessageDraft' failed! (...)".
+  const isDraftCall = text.includes("sendmessagedraft");
+  if (!isDraftCall) return false;
+
+  // Covers older/self-hosted bot api builds that simply don't have this method.
+  return (
+    text.includes("method not found") ||
+    text.includes("unknown method") ||
+    text.includes("not available") ||
+    text.includes("not supported") ||
+    text.includes("404")
+  );
+}
+
 export function createTelegramDraftStream(params: {
   api: Bot["api"];
   chatId: number;
@@ -18,6 +37,7 @@ export function createTelegramDraftStream(params: {
   throttleMs?: number;
   log?: (message: string) => void;
   warn?: (message: string) => void;
+  onUnsupported?: (err: unknown) => void;
 }): TelegramDraftStream {
   const maxChars = Math.min(params.maxChars ?? TELEGRAM_DRAFT_MAX_CHARS, TELEGRAM_DRAFT_MAX_CHARS);
   const throttleMs = Math.max(50, params.throttleMs ?? DEFAULT_THROTTLE_MS);
@@ -54,6 +74,9 @@ export function createTelegramDraftStream(params: {
       await params.api.sendMessageDraft(chatId, draftId, trimmed, threadParams);
     } catch (err) {
       stopped = true;
+      if (isSendMessageDraftUnsupportedError(err)) {
+        params.onUnsupported?.(err);
+      }
       params.warn?.(
         `telegram draft stream failed: ${err instanceof Error ? err.message : String(err)}`,
       );

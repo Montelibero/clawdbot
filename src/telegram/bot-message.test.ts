@@ -39,7 +39,8 @@ describe("telegram bot message processor", () => {
     streamMode: "auto",
     textLimit: 4096,
     opts: {},
-    resolveBotTopicsEnabled: () => false,
+    resolveDraftStreamingSupported: () => true,
+    markDraftStreamingUnsupported: () => {},
   };
 
   it("dispatches when context is available", async () => {

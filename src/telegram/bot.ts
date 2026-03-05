@@ -22,6 +22,7 @@ import { loadSessionStore, resolveStorePath } from "../config/sessions.js";
 import { danger, logVerbose, shouldLogVerbose } from "../globals.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { enqueueSystemEvent } from "../infra/system-events.js";
+import { formatErrorMessage } from "../infra/errors.js";
 import { getChildLogger } from "../logging.js";
 import { resolveAgentRoute } from "../routing/resolve-route.js";
 import { resolveThreadSessionKeys } from "../routing/session-key.js";
@@ -32,7 +33,7 @@ import {
   resolveTelegramForumThreadId,
   resolveTelegramStreamMode,
 } from "./bot/helpers.js";
-import type { TelegramContext, TelegramMessage } from "./bot/types.js";
+import type { TelegramMessage } from "./bot/types.js";
 import { registerTelegramHandlers } from "./bot-handlers.js";
 import { createTelegramMessageProcessor } from "./bot-message.js";
 import { registerTelegramNativeCommands } from "./bot-native-commands.js";
@@ -244,22 +245,17 @@ export function createTelegramBot(opts: TelegramBotOptions) {
   const ackReactionScope = cfg.messages?.ackReactionScope ?? "group-mentions";
   const mediaMaxBytes = (opts.mediaMaxMb ?? telegramCfg.mediaMaxMb ?? 5) * 1024 * 1024;
   const logger = getChildLogger({ module: "telegram-auto-reply" });
-  let botHasTopicsEnabled: boolean | undefined;
-  const resolveBotTopicsEnabled = async (ctx?: TelegramContext) => {
-    const fromCtx = ctx?.me as { has_topics_enabled?: boolean } | undefined;
-    if (typeof fromCtx?.has_topics_enabled === "boolean") {
-      botHasTopicsEnabled = fromCtx.has_topics_enabled;
-      return botHasTopicsEnabled;
-    }
-    if (typeof botHasTopicsEnabled === "boolean") return botHasTopicsEnabled;
-    try {
-      const me = (await bot.api.getMe()) as { has_topics_enabled?: boolean };
-      botHasTopicsEnabled = Boolean(me?.has_topics_enabled);
-    } catch (err) {
-      logVerbose(`telegram getMe failed: ${String(err)}`);
-      botHasTopicsEnabled = false;
-    }
-    return botHasTopicsEnabled;
+  // Draft streaming (`sendMessageDraft`) support is not guaranteed on all deployments
+  // (notably older/self-hosted `telegram-bot-api`). Auto-disable after the first
+  // "unsupported" style error to avoid spamming logs on every reply.
+  let draftStreamingUnsupported = false;
+  const resolveDraftStreamingSupported = () => !draftStreamingUnsupported;
+  const markDraftStreamingUnsupported = (err?: unknown) => {
+    if (draftStreamingUnsupported) return;
+    draftStreamingUnsupported = true;
+    logVerbose(
+      `telegram draft streaming disabled: ${err ? formatErrorMessage(err) : "unsupported"}`,
+    );
   };
   const resolveGroupPolicy = (chatId: string | number) =>
     resolveChannelGroupPolicy({
@@ -328,7 +324,8 @@ export function createTelegramBot(opts: TelegramBotOptions) {
     streamMode,
     textLimit,
     opts,
-    resolveBotTopicsEnabled,
+    resolveDraftStreamingSupported,
+    markDraftStreamingUnsupported,
   });
 
   registerTelegramNativeCommands({

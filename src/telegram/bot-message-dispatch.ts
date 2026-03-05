@@ -23,11 +23,11 @@ export const dispatchTelegramMessage = async ({
   textLimit,
   telegramCfg,
   opts,
-  resolveBotTopicsEnabled,
+  resolveDraftStreamingSupported,
+  markDraftStreamingUnsupported,
 }) => {
   const {
     ctxPayload,
-    primaryCtx,
     msg,
     chatId,
     isGroup,
@@ -46,20 +46,25 @@ export const dispatchTelegramMessage = async ({
 
   const isPrivateChat = msg.chat.type === "private";
   const draftMaxChars = Math.min(textLimit, 4096);
+  const draftThreadId = typeof resolvedThreadId === "number" ? resolvedThreadId : undefined;
   const canStreamDraft =
     streamMode !== "off" &&
     isPrivateChat &&
-    typeof resolvedThreadId === "number" &&
-    (await resolveBotTopicsEnabled(primaryCtx));
+    (typeof resolveDraftStreamingSupported === "function"
+      ? resolveDraftStreamingSupported() !== false
+      : true);
   const draftStream = canStreamDraft
     ? createTelegramDraftStream({
         api: bot.api,
         chatId,
         draftId: msg.message_id || Date.now(),
         maxChars: draftMaxChars,
-        messageThreadId: resolvedThreadId,
+        messageThreadId: draftThreadId,
         log: logVerbose,
         warn: logVerbose,
+        onUnsupported: (err) => {
+          markDraftStreamingUnsupported?.(err);
+        },
       })
     : undefined;
   const draftChunking =

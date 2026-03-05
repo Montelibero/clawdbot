@@ -23,7 +23,8 @@ export const createTelegramMessageProcessor = (deps) => {
     streamMode,
     textLimit,
     opts,
-    resolveBotTopicsEnabled,
+    resolveDraftStreamingSupported,
+    markDraftStreamingUnsupported,
   } = deps;
 
   return async (primaryCtx, allMedia, storeAllowFrom, options) => {
@@ -57,7 +58,8 @@ export const createTelegramMessageProcessor = (deps) => {
       textLimit,
       telegramCfg,
       opts,
-      resolveBotTopicsEnabled,
+      resolveDraftStreamingSupported,
+      markDraftStreamingUnsupported,
     });
   };
 };
