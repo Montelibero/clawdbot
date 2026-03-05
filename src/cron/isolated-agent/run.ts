@@ -18,6 +18,7 @@ import {
   resolveHooksGmailModel,
   resolveThinkingDefault,
 } from "../../agents/model-selection.js";
+import { coerceFailoverErrorFromPayloads } from "../../agents/failover-from-payloads.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
 import type { MessagingToolSend } from "../../agents/pi-embedded-messaging.js";
 import { buildWorkspaceSkillSnapshot } from "../../agents/skills.js";
@@ -347,6 +348,14 @@ export async function runCronIsolatedAgentTurn(params: {
             timeoutMs,
             runId: cronSession.sessionEntry.sessionId,
             cliSessionId,
+          }).then((result) => {
+            const failover = coerceFailoverErrorFromPayloads({
+              payloads: result.payloads,
+              provider: providerOverride,
+              model: modelOverride,
+            });
+            if (failover) throw failover;
+            return result;
           });
         }
         return runEmbeddedPiAgent({
@@ -366,6 +375,14 @@ export async function runCronIsolatedAgentTurn(params: {
           verboseLevel: resolvedVerboseLevel,
           timeoutMs,
           runId: cronSession.sessionEntry.sessionId,
+        }).then((result) => {
+          const failover = coerceFailoverErrorFromPayloads({
+            payloads: result.payloads,
+            provider: providerOverride,
+            model: modelOverride,
+          });
+          if (failover) throw failover;
+          return result;
         });
       },
     });

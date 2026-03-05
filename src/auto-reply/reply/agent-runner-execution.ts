@@ -6,6 +6,7 @@ import { getCliSessionId } from "../../agents/cli-session.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
+import { coerceFailoverErrorFromPayloads } from "../../agents/failover-from-payloads.js";
 import {
   isCompactionFailureError,
   isContextOverflowError,
@@ -179,6 +180,12 @@ export async function runAgentTurnWithFallback(params: {
               images: params.opts?.images,
             })
               .then((result) => {
+                const failover = coerceFailoverErrorFromPayloads({
+                  payloads: result.payloads,
+                  provider,
+                  model,
+                });
+                if (failover) throw failover;
                 // CLI backends don't emit streaming assistant events, so we need to
                 // emit one with the final text so server-chat can populate its buffer
                 // and send the response to TUI/WebSocket clients.
@@ -409,6 +416,14 @@ export async function runAgentTurnWithFallback(params: {
                   params.pendingToolTasks.add(task);
                 }
               : undefined,
+          }).then((res) => {
+            const failover = coerceFailoverErrorFromPayloads({
+              payloads: res.payloads,
+              provider,
+              model,
+            });
+            if (failover) throw failover;
+            return res;
           });
         },
       });

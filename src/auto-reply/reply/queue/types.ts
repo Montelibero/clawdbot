@@ -41,6 +41,8 @@ export type FollowupRun = {
   originatingThreadId?: string | number;
   /** Chat type for context-aware threading (e.g., DM vs channel). */
   originatingChatType?: string;
+  /** True when the originating sender matched an explicit owner entry (allowFrom without "*"). */
+  originatingIsOwnerSender?: boolean;
   run: {
     agentId: string;
     agentDir: string;

@@ -9,6 +9,8 @@ export type CommandAuthorization = {
   providerId?: ChannelId;
   ownerList: string[];
   senderId?: string;
+  /** True only when the sender matches an entry in ownerList (independent of allowAll/enforceOwner). */
+  isOwnerSender: boolean;
   isAuthorizedSender: boolean;
   from?: string;
   to?: string;
@@ -128,7 +130,9 @@ export function resolveCommandAuthorization(params: {
   const allowAll =
     allowFromList.length === 0 || allowFromList.some((entry) => entry.trim() === "*");
 
-  const ownerCandidates = allowAll ? [] : allowFromList.filter((entry) => entry !== "*");
+  // Even when allowAll ("*") is set, we still want to know explicit owner entries
+  // so we can send owner-only alerts (and detect whether the sender is an owner).
+  const ownerCandidates = allowFromList.filter((entry) => entry !== "*");
   if (!allowAll && ownerCandidates.length === 0 && to) {
     const normalizedTo = normalizeAllowFromEntry({
       dock,
@@ -156,12 +160,14 @@ export function resolveCommandAuthorization(params: {
 
   const enforceOwner = Boolean(dock?.commands?.enforceOwnerForCommands);
   const isOwner = !enforceOwner || allowAll || ownerList.length === 0 || Boolean(matchedSender);
+  const isOwnerSender = Boolean(matchedSender);
   const isAuthorizedSender = commandAuthorized && isOwner;
 
   return {
     providerId,
     ownerList,
     senderId: senderId || undefined,
+    isOwnerSender,
     isAuthorizedSender,
     from: from || undefined,
     to: to || undefined,

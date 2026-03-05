@@ -11,6 +11,7 @@ import { getCliSessionId } from "../agents/cli-session.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import { runWithModelFallback } from "../agents/model-fallback.js";
+import { coerceFailoverErrorFromPayloads } from "../agents/failover-from-payloads.js";
 import {
   buildAllowedModelSet,
   isCliProvider,
@@ -402,6 +403,14 @@ export async function agentCommand(
               cliSessionId,
               images: opts.images,
               streamParams: opts.streamParams,
+            }).then((res) => {
+              const failover = coerceFailoverErrorFromPayloads({
+                payloads: res.payloads,
+                provider: providerOverride,
+                model: modelOverride,
+              });
+              if (failover) throw failover;
+              return res;
             });
           }
           const authProfileId =
@@ -453,6 +462,14 @@ export async function agentCommand(
                 lifecycleEnded = true;
               }
             },
+          }).then((res) => {
+            const failover = coerceFailoverErrorFromPayloads({
+              payloads: res.payloads,
+              provider: providerOverride,
+              model: modelOverride,
+            });
+            if (failover) throw failover;
+            return res;
           });
         },
       });

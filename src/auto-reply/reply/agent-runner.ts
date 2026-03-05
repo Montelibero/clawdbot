@@ -6,6 +6,7 @@ import { resolveModelAuthMode } from "../../agents/model-auth.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { queueEmbeddedPiMessage } from "../../agents/pi-embedded.js";
 import { hasNonzeroUsage } from "../../agents/usage.js";
+import { classifyFailoverReason } from "../../agents/pi-embedded-helpers.js";
 import {
   resolveAgentIdFromSessionKey,
   resolveSessionFilePath,
@@ -49,6 +50,39 @@ import { createTypingSignaler } from "./typing-mode.js";
 import { emitDiagnosticEvent, isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
 
 const BLOCK_REPLY_SEND_TIMEOUT_MS = 15_000;
+const OWNER_ALERT_COOLDOWN_MS = 10 * 60 * 1000;
+
+function isErrorishPayload(payload: ReplyPayload): boolean {
+  if (payload.isError) return true;
+  const text = (payload.text ?? "").trim();
+  return text.startsWith("⚠️");
+}
+
+function pickOwnerAlertText(payloads: ReplyPayload[]): string | null {
+  for (const payload of payloads) {
+    const text = (payload.text ?? "").trim();
+    if (!text) continue;
+    if (isErrorishPayload(payload)) return text;
+  }
+  return null;
+}
+
+function computeOwnerAlertKey(params: {
+  text: string;
+  provider?: string;
+  model?: string;
+  sessionKey?: string;
+}): string {
+  const h = crypto.createHash("sha1");
+  h.update(params.sessionKey ?? "");
+  h.update("\n");
+  h.update(params.provider ?? "");
+  h.update("/");
+  h.update(params.model ?? "");
+  h.update("\n");
+  h.update(params.text);
+  return h.digest("hex");
+}
 
 export async function runReplyAgent(params: {
   commandBody: string;
@@ -137,6 +171,8 @@ export async function runReplyAgent(params: {
     ((sessionCtx.Surface ?? sessionCtx.Provider)?.toLowerCase() as
       | OriginatingChannelType
       | undefined);
+  const isOwnerSender = followupRun.originatingIsOwnerSender === true;
+  const shouldSuppressOriginErrors = !isOwnerSender;
   const replyToMode = resolveReplyToMode(
     followupRun.run.config,
     replyToChannel,
@@ -145,6 +181,72 @@ export async function runReplyAgent(params: {
   );
   const applyReplyToMode = createReplyToModeFilterForChannel(replyToMode, replyToChannel);
   const cfg = followupRun.run.config;
+  const notifyOwners = async (params: { text: string; reason?: string }) => {
+    const owners = (followupRun.run.ownerNumbers ?? []).map((v) => v.trim()).filter(Boolean);
+    if (owners.length === 0) {
+      defaultRuntime.error?.(
+        `Owner alert dropped (no owners configured): ${params.reason ?? "error"}`,
+      );
+      return;
+    }
+    if (!isRoutableChannel(replyToChannel)) {
+      defaultRuntime.error?.(
+        `Owner alert dropped (unroutable channel ${String(replyToChannel)}): ${params.reason ?? "error"}`,
+      );
+      return;
+    }
+
+    const providerUsed = followupRun.run.provider;
+    const modelUsed = followupRun.run.model;
+    const alertKey = computeOwnerAlertKey({
+      text: params.text,
+      provider: providerUsed,
+      model: modelUsed,
+      sessionKey,
+    });
+    const now = Date.now();
+    const lastAt = activeSessionEntry?.lastOwnerAlertAt ?? 0;
+    const lastKey = activeSessionEntry?.lastOwnerAlertKey ?? "";
+    if (now - lastAt < OWNER_ALERT_COOLDOWN_MS && lastKey === alertKey) return;
+
+    const header = [
+      "⚠️ Clawdbot alert",
+      params.reason ? `Reason: ${params.reason}` : null,
+      replyToChannel ? `Channel: ${replyToChannel}` : null,
+      sessionCtx.OriginatingTo ? `Origin: ${sessionCtx.OriginatingTo}` : null,
+      sessionKey ? `Session: ${sessionKey}` : null,
+      followupRun.run.sessionId ? `RunSessionId: ${followupRun.run.sessionId}` : null,
+      providerUsed ? `Model: ${providerUsed}/${modelUsed}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const text = `${header}\n\n${params.text}`;
+
+    for (const owner of owners) {
+      await routeReply({
+        payload: { text, isError: true },
+        channel: replyToChannel,
+        to: owner,
+        sessionKey,
+        accountId: sessionCtx.AccountId,
+        cfg,
+        mirror: false,
+      });
+    }
+
+    if (activeSessionEntry && activeSessionStore && sessionKey) {
+      activeSessionEntry.lastOwnerAlertAt = now;
+      activeSessionEntry.lastOwnerAlertKey = alertKey;
+      activeSessionStore[sessionKey] = activeSessionEntry;
+      if (storePath) {
+        await updateSessionStoreEntry({
+          storePath,
+          sessionKey,
+          update: async () => ({ lastOwnerAlertAt: now, lastOwnerAlertKey: alertKey }),
+        });
+      }
+    }
+  };
   const blockReplyCoalescing =
     blockStreamingEnabled && opts?.onBlockReply
       ? resolveBlockStreamingCoalescing(
@@ -331,6 +433,13 @@ export async function runReplyAgent(params: {
     });
 
     if (runOutcome.kind === "final") {
+      if (shouldSuppressOriginErrors && isErrorishPayload(runOutcome.payload)) {
+        await notifyOwners({
+          text: runOutcome.payload.text ?? "Agent failed before reply.",
+          reason: classifyFailoverReason(runOutcome.payload.text ?? "") ?? "error",
+        });
+        return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
+      }
       return finalizeWithFollowup(runOutcome.payload, queueKey, runFollowupTurn);
     }
 
@@ -444,8 +553,14 @@ export async function runReplyAgent(params: {
     // Drain any late tool/block deliveries before deciding there's "nothing to send".
     // Otherwise, a late typing trigger (e.g. from a tool callback) can outlive the run and
     // keep the typing indicator stuck.
-    if (payloadArray.length === 0)
-      return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
+    if (payloadArray.length === 0) {
+      const text = "⚠️ No reply from agent.\nLogs: clawdbot logs --follow";
+      if (shouldSuppressOriginErrors) {
+        await notifyOwners({ text, reason: "no_reply" });
+        return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
+      }
+      return finalizeWithFollowup({ text, isError: true }, queueKey, runFollowupTurn);
+    }
 
     const payloadResult = buildReplyPayloads({
       payloads: payloadArray,
@@ -463,11 +578,31 @@ export async function runReplyAgent(params: {
       originatingTo: sessionCtx.OriginatingTo ?? sessionCtx.To,
       accountId: sessionCtx.AccountId,
     });
-    const { replyPayloads } = payloadResult;
+    let replyPayloads = payloadResult.replyPayloads;
     didLogHeartbeatStrip = payloadResult.didLogHeartbeatStrip;
 
-    if (replyPayloads.length === 0)
-      return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
+    if (replyPayloads.length === 0) {
+      const text = "⚠️ No reply from agent.\nLogs: clawdbot logs --follow";
+      if (shouldSuppressOriginErrors) {
+        await notifyOwners({ text, reason: "no_reply" });
+        return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
+      }
+      return finalizeWithFollowup({ text, isError: true }, queueKey, runFollowupTurn);
+    }
+
+    if (shouldSuppressOriginErrors) {
+      const errorText = pickOwnerAlertText(replyPayloads);
+      if (errorText) {
+        await notifyOwners({
+          text: errorText,
+          reason: classifyFailoverReason(errorText) ?? "error",
+        });
+        replyPayloads = replyPayloads.filter((p) => !isErrorishPayload(p));
+        if (replyPayloads.length === 0) {
+          return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
+        }
+      }
+    }
 
     await signalTypingIfNeeded(replyPayloads, typingSignals);
 

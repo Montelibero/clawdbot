@@ -8,6 +8,7 @@ import type { FollowupRun } from "./queue.js";
 import { createMockTypingController } from "./test-helpers.js";
 
 const runEmbeddedPiAgentMock = vi.fn();
+const routeReplyMock = vi.fn(async () => ({ ok: true }));
 
 vi.mock("../../agents/model-fallback.js", () => ({
   runWithModelFallback: async ({
@@ -27,6 +28,11 @@ vi.mock("../../agents/model-fallback.js", () => ({
 
 vi.mock("../../agents/pi-embedded.js", () => ({
   runEmbeddedPiAgent: (params: unknown) => runEmbeddedPiAgentMock(params),
+}));
+
+vi.mock("./route-reply.js", () => ({
+  isRoutableChannel: (channel: unknown) => typeof channel === "string" && channel.trim().length > 0,
+  routeReply: (params: unknown) => routeReplyMock(params),
 }));
 
 import { createFollowupRunner } from "./followup-runner.js";
@@ -237,5 +243,69 @@ describe("createFollowupRunner messaging tool dedupe", () => {
     const store = loadSessionStore(storePath, { skipCache: true });
     expect(store[sessionKey]?.totalTokens ?? 0).toBeGreaterThan(0);
     expect(store[sessionKey]?.model).toBe("claude-opus-4-5");
+  });
+});
+
+describe("createFollowupRunner owner-only error alerts", () => {
+  it("notifies owners and suppresses errorish payloads for non-owners", async () => {
+    routeReplyMock.mockClear();
+    const onBlockReply = vi.fn(async () => {});
+    runEmbeddedPiAgentMock.mockResolvedValueOnce({
+      payloads: [{ text: "⚠️ 429 API key token limit exceeded", isError: true }],
+      meta: {},
+    });
+
+    const runner = createFollowupRunner({
+      opts: { onBlockReply },
+      typing: createMockTypingController(),
+      typingMode: "instant",
+      defaultModel: "anthropic/claude-opus-4-5",
+    });
+
+    await runner({
+      ...baseQueuedRun("telegram"),
+      originatingIsOwnerSender: false,
+      run: {
+        ...baseQueuedRun("telegram").run,
+        ownerNumbers: ["owner:1"],
+      },
+    } as FollowupRun);
+
+    expect(onBlockReply).not.toHaveBeenCalled();
+    expect(routeReplyMock).toHaveBeenCalledTimes(1);
+    const call = routeReplyMock.mock.calls[0]?.[0] as { payload?: { text?: string } };
+    expect(call.payload?.text ?? "").toContain("Clawdbot alert");
+  });
+
+  it("notifies owners and filters out error chunks when there is also a normal reply", async () => {
+    routeReplyMock.mockClear();
+    const onBlockReply = vi.fn(async () => {});
+    runEmbeddedPiAgentMock.mockResolvedValueOnce({
+      payloads: [
+        { text: "⚠️ 429 API key token limit exceeded", isError: true },
+        { text: "normal answer" },
+      ],
+      meta: {},
+    });
+
+    const runner = createFollowupRunner({
+      opts: { onBlockReply },
+      typing: createMockTypingController(),
+      typingMode: "instant",
+      defaultModel: "anthropic/claude-opus-4-5",
+    });
+
+    await runner({
+      ...baseQueuedRun("telegram"),
+      originatingIsOwnerSender: false,
+      run: {
+        ...baseQueuedRun("telegram").run,
+        ownerNumbers: ["owner:1"],
+      },
+    } as FollowupRun);
+
+    expect(routeReplyMock).toHaveBeenCalledTimes(1);
+    expect(onBlockReply).toHaveBeenCalledTimes(1);
+    expect(onBlockReply.mock.calls[0]?.[0]?.text ?? "").toBe("normal answer");
   });
 });

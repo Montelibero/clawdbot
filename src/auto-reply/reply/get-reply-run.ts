@@ -107,7 +107,7 @@ async function checkSessionSizeAndWarn(params: {
         }
       }
     }
-  } catch (err) {
+  } catch {
     // Ignore stat errors (e.g. file doesn't exist yet)
   }
 }
@@ -435,6 +435,7 @@ export async function runPreparedReply(
     originatingAccountId: ctx.AccountId,
     originatingThreadId: ctx.MessageThreadId,
     originatingChatType: ctx.ChatType,
+    originatingIsOwnerSender: command.isOwnerSender,
     run: {
       agentId,
       agentDir,

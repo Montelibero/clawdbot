@@ -73,6 +73,10 @@ export type SessionEntry = {
   totalTokens?: number;
   lastSizeWarningAt?: number;
   lastUsageWarningAt?: number;
+  /** Last time we notified owners about an error to avoid spamming. */
+  lastOwnerAlertAt?: number;
+  /** Fingerprint of last owner alert to avoid repeated identical notifications. */
+  lastOwnerAlertKey?: string;
   modelProvider?: string;
   model?: string;
   contextTokens?: number;

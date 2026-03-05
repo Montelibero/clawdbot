@@ -2,9 +2,15 @@ import crypto from "node:crypto";
 import { resolveAgentModelFallbacksOverride } from "../../agents/agent-scope.js";
 import { lookupContextTokens } from "../../agents/context.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../../agents/defaults.js";
+import { coerceFailoverErrorFromPayloads } from "../../agents/failover-from-payloads.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
-import { resolveAgentIdFromSessionKey, type SessionEntry } from "../../config/sessions.js";
+import { classifyFailoverReason } from "../../agents/pi-embedded-helpers.js";
+import {
+  resolveAgentIdFromSessionKey,
+  type SessionEntry,
+  updateSessionStoreEntry,
+} from "../../config/sessions.js";
 import type { TypingMode } from "../../config/types.js";
 import { logVerbose } from "../../globals.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
@@ -53,6 +59,100 @@ export function createFollowupRunner(params: {
     mode: typingMode,
     isHeartbeat: opts?.isHeartbeat === true,
   });
+  const OWNER_ALERT_COOLDOWN_MS = 10 * 60 * 1000;
+
+  const isErrorishPayload = (payload: ReplyPayload): boolean => {
+    if (payload.isError) return true;
+    const text = (payload.text ?? "").trim();
+    return text.startsWith("⚠️");
+  };
+
+  const computeOwnerAlertKey = (params: {
+    text: string;
+    provider?: string;
+    model?: string;
+    sessionKey?: string;
+  }): string => {
+    const h = crypto.createHash("sha1");
+    h.update(params.sessionKey ?? "");
+    h.update("\n");
+    h.update(params.provider ?? "");
+    h.update("/");
+    h.update(params.model ?? "");
+    h.update("\n");
+    h.update(params.text);
+    return h.digest("hex");
+  };
+
+  const notifyOwners = async (queued: FollowupRun, alert: { text: string; reason?: string }) => {
+    const owners = (queued.run.ownerNumbers ?? []).map((v) => v.trim()).filter(Boolean);
+    if (owners.length === 0) {
+      defaultRuntime.error?.(
+        `Owner alert dropped (no owners configured): ${alert.reason ?? "error"}`,
+      );
+      return;
+    }
+    const replyToChannel =
+      queued.originatingChannel ??
+      (queued.run.messageProvider?.toLowerCase() as OriginatingChannelType | undefined);
+    if (!isRoutableChannel(replyToChannel)) {
+      defaultRuntime.error?.(
+        `Owner alert dropped (unroutable channel ${String(replyToChannel)}): ${alert.reason ?? "error"}`,
+      );
+      return;
+    }
+
+    const providerUsed = queued.run.provider;
+    const modelUsed = queued.run.model;
+    const alertKey = computeOwnerAlertKey({
+      text: alert.text,
+      provider: providerUsed,
+      model: modelUsed,
+      sessionKey,
+    });
+    const now = Date.now();
+    const lastAt = sessionEntry?.lastOwnerAlertAt ?? 0;
+    const lastKey = sessionEntry?.lastOwnerAlertKey ?? "";
+    if (now - lastAt < OWNER_ALERT_COOLDOWN_MS && lastKey === alertKey) return;
+
+    const header = [
+      "⚠️ Clawdbot alert",
+      alert.reason ? `Reason: ${alert.reason}` : null,
+      replyToChannel ? `Channel: ${replyToChannel}` : null,
+      queued.originatingTo ? `Origin: ${queued.originatingTo}` : null,
+      queued.run.sessionKey ? `Session: ${queued.run.sessionKey}` : null,
+      queued.run.sessionId ? `RunSessionId: ${queued.run.sessionId}` : null,
+      providerUsed ? `Model: ${providerUsed}/${modelUsed}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const text = `${header}\n\n${alert.text}`;
+
+    for (const owner of owners) {
+      await routeReply({
+        payload: { text, isError: true },
+        channel: replyToChannel,
+        to: owner,
+        sessionKey,
+        accountId: queued.originatingAccountId,
+        cfg: queued.run.config,
+        mirror: false,
+      });
+    }
+
+    if (sessionEntry && sessionStore && sessionKey) {
+      sessionEntry.lastOwnerAlertAt = now;
+      sessionEntry.lastOwnerAlertKey = alertKey;
+      sessionStore[sessionKey] = sessionEntry;
+      if (storePath) {
+        await updateSessionStoreEntry({
+          storePath,
+          sessionKey,
+          update: async () => ({ lastOwnerAlertAt: now, lastOwnerAlertKey: alertKey }),
+        });
+      }
+    }
+  };
 
   /**
    * Sends followup payloads, routing to the originating channel if set.
@@ -174,6 +274,14 @@ export function createFollowupRunner(params: {
                   autoCompactionCompleted = true;
                 }
               },
+            }).then((res) => {
+              const failover = coerceFailoverErrorFromPayloads({
+                payloads: res.payloads,
+                provider,
+                model,
+              });
+              if (failover) throw failover;
+              return res;
             });
           },
         });
@@ -183,6 +291,34 @@ export function createFollowupRunner(params: {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         defaultRuntime.error?.(`Followup agent failed before reply: ${message}`);
+
+        const isOwnerSender = queued.originatingIsOwnerSender === true;
+        const replyToChannel =
+          queued.originatingChannel ??
+          (queued.run.messageProvider?.toLowerCase() as OriginatingChannelType | undefined);
+        const text = message.trim().startsWith("⚠️") ? message.trim() : `⚠️ ${message}`.trim();
+
+        if (!isOwnerSender) {
+          await notifyOwners(queued, {
+            text,
+            reason: classifyFailoverReason(text) ?? "error",
+          });
+          return;
+        }
+
+        if (isRoutableChannel(replyToChannel) && queued.originatingTo) {
+          await routeReply({
+            payload: { text, isError: true },
+            channel: replyToChannel,
+            to: queued.originatingTo,
+            sessionKey: queued.run.sessionKey,
+            accountId: queued.originatingAccountId,
+            threadId: queued.originatingThreadId,
+            cfg: queued.run.config,
+          });
+        } else if (opts?.onBlockReply) {
+          await opts.onBlockReply({ text, isError: true });
+        }
         return;
       }
 
@@ -207,7 +343,29 @@ export function createFollowupRunner(params: {
       }
 
       const payloadArray = runResult.payloads ?? [];
-      if (payloadArray.length === 0) return;
+      const isOwnerSender = queued.originatingIsOwnerSender === true;
+      const replyToChannel =
+        queued.originatingChannel ??
+        (queued.run.messageProvider?.toLowerCase() as OriginatingChannelType | undefined);
+      if (payloadArray.length === 0) {
+        const text = "⚠️ No reply from agent.\nLogs: clawdbot logs --follow";
+        if (!isOwnerSender) {
+          await notifyOwners(queued, { text, reason: "no_reply" });
+          return;
+        }
+        if (isRoutableChannel(replyToChannel) && queued.originatingTo) {
+          await routeReply({
+            payload: { text, isError: true },
+            channel: replyToChannel,
+            to: queued.originatingTo,
+            sessionKey: queued.run.sessionKey,
+            accountId: queued.originatingAccountId,
+            threadId: queued.originatingThreadId,
+            cfg: queued.run.config,
+          });
+        }
+        return;
+      }
       const sanitizedPayloads = payloadArray.flatMap((payload) => {
         const text = payload.text;
         if (!text || !text.includes("HEARTBEAT_OK")) return [payload];
@@ -216,9 +374,6 @@ export function createFollowupRunner(params: {
         if (stripped.shouldSkip && !hasMedia) return [];
         return [{ ...payload, text: stripped.text }];
       });
-      const replyToChannel =
-        queued.originatingChannel ??
-        (queued.run.messageProvider?.toLowerCase() as OriginatingChannelType | undefined);
       const replyToMode = resolveReplyToMode(
         queued.run.config,
         replyToChannel,
@@ -242,9 +397,20 @@ export function createFollowupRunner(params: {
         originatingTo: queued.originatingTo,
         accountId: queued.run.agentAccountId,
       });
-      const finalPayloads = suppressMessagingToolReplies ? [] : dedupedPayloads;
+      let finalPayloads = suppressMessagingToolReplies ? [] : dedupedPayloads;
 
       if (finalPayloads.length === 0) return;
+      if (!isOwnerSender) {
+        const errorish = finalPayloads.filter(isErrorishPayload);
+        if (errorish.length > 0) {
+          const text =
+            errorish.find((p) => (p.text ?? "").trim())?.text?.trim() ??
+            "Agent failed with an unknown error.";
+          await notifyOwners(queued, { text, reason: classifyFailoverReason(text) ?? "error" });
+        }
+        finalPayloads = finalPayloads.filter((p) => !isErrorishPayload(p));
+        if (finalPayloads.length === 0) return;
+      }
 
       if (autoCompactionCompleted) {
         const count = await incrementCompactionCount({

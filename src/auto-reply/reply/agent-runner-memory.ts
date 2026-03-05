@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { resolveAgentModelFallbacksOverride } from "../../agents/agent-scope.js";
+import { coerceFailoverErrorFromPayloads } from "../../agents/failover-from-payloads.js";
 import { runWithModelFallback } from "../../agents/model-fallback.js";
 import { isCliProvider } from "../../agents/model-selection.js";
 import { runEmbeddedPiAgent } from "../../agents/pi-embedded.js";
@@ -145,6 +146,14 @@ export async function runMemoryFlushIfNeeded(params: {
               }
             }
           },
+        }).then((res) => {
+          const failover = coerceFailoverErrorFromPayloads({
+            payloads: res.payloads,
+            provider,
+            model,
+          });
+          if (failover) throw failover;
+          return res;
         });
       },
     });
