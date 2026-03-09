@@ -314,6 +314,30 @@ describe("legacy config detection", () => {
       expect(res.config.channels?.telegram?.streamMode).toBe("partial");
     }
   });
+  it("accepts telegram group topicPolicy overrides", async () => {
+    vi.resetModules();
+    const { validateConfigObject } = await import("./config.js");
+    const res = validateConfigObject({
+      channels: {
+        telegram: {
+          groups: {
+            "-1001234567890": {
+              topicPolicy: "allowlist",
+              topics: {
+                "99": { enabled: true },
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.config.channels?.telegram?.groups?.["-1001234567890"]?.topicPolicy).toBe(
+        "allowlist",
+      );
+    }
+  });
   it('rejects whatsapp.dmPolicy="open" without allowFrom "*"', async () => {
     vi.resetModules();
     const { validateConfigObject } = await import("./config.js");

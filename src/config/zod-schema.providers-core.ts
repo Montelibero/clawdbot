@@ -12,6 +12,7 @@ import {
   ProviderCommandsSchema,
   ReplyToModeSchema,
   RetryConfigSchema,
+  TopicPolicySchema,
   requireOpenAllowFrom,
 } from "./zod-schema.core.js";
 import { ToolPolicySchema } from "./zod-schema.agent-runtime.js";
@@ -48,6 +49,7 @@ export const TelegramGroupSchema = z
     requireMention: z.boolean().optional(),
     tools: ToolPolicySchema,
     skills: z.array(z.string()).optional(),
+    topicPolicy: TopicPolicySchema.optional(),
     enabled: z.boolean().optional(),
     allowFrom: z.array(z.union([z.string(), z.number()])).optional(),
     systemPrompt: z.string().optional(),

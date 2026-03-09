@@ -4,6 +4,7 @@ import type { ClawdbotConfig } from "../../config/config.js";
 import { loadConfig, resolveConfigSnapshotHash } from "../../config/io.js";
 import { loadSessionStore, resolveStorePath } from "../../config/sessions.js";
 import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
+import { checkRestartConfigPreflight } from "../../infra/restart-preflight.js";
 import {
   formatDoctorNonInteractiveHint,
   type RestartSentinelPayload,
@@ -74,6 +75,10 @@ export function createGatewayTool(opts?: {
       if (action === "restart") {
         if (opts?.config?.commands?.restart !== true) {
           throw new Error("Gateway restart is disabled. Set commands.restart=true to enable.");
+        }
+        const preflight = await checkRestartConfigPreflight();
+        if (!preflight.ok) {
+          throw new Error(preflight.message);
         }
         const sessionKey =
           typeof params.sessionKey === "string" && params.sessionKey.trim()

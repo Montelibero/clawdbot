@@ -127,6 +127,9 @@ export const ReplyToModeSchema = z.union([z.literal("off"), z.literal("first"), 
 //   - .default("allowlist") ensures runtime always resolves to "allowlist" if not provided
 export const GroupPolicySchema = z.enum(["open", "disabled", "allowlist"]);
 
+// TopicPolicySchema: controls which forum topics a Telegram group responds to
+export const TopicPolicySchema = z.enum(["open", "allowlist"]);
+
 export const DmPolicySchema = z.enum(["pairing", "allowlist", "open", "disabled"]);
 
 export const BlockStreamingCoalesceSchema = z

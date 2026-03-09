@@ -89,6 +89,43 @@ describe("gateway tool", () => {
     );
   });
 
+  it("blocks restart when config is invalid", async () => {
+    vi.useFakeTimers();
+    const kill = vi.spyOn(process, "kill").mockImplementation(() => true);
+    const previousStateDir = process.env.CLAWDBOT_STATE_DIR;
+    const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-test-"));
+    process.env.CLAWDBOT_STATE_DIR = stateDir;
+    await fs.writeFile(path.join(stateDir, "clawdbot.json"), "{ invalid", "utf-8");
+
+    try {
+      const tool = createClawdbotTools({
+        config: { commands: { restart: true } },
+      }).find((candidate) => candidate.name === "gateway");
+      expect(tool).toBeDefined();
+      if (!tool) throw new Error("missing gateway tool");
+
+      await expect(
+        tool.execute("call-invalid", {
+          action: "restart",
+          delayMs: 0,
+        }),
+      ).rejects.toThrow(/Restart blocked: config is invalid/i);
+
+      await expect(
+        fs.readFile(path.join(stateDir, "restart-sentinel.json"), "utf-8"),
+      ).rejects.toThrow();
+      expect(kill).not.toHaveBeenCalled();
+    } finally {
+      kill.mockRestore();
+      vi.useRealTimers();
+      if (previousStateDir === undefined) {
+        delete process.env.CLAWDBOT_STATE_DIR;
+      } else {
+        process.env.CLAWDBOT_STATE_DIR = previousStateDir;
+      }
+    }
+  });
+
   it("passes config.patch through gateway call", async () => {
     const { callGatewayTool } = await import("./tools/gateway.js");
     const tool = createClawdbotTools({

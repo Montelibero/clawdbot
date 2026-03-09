@@ -6,6 +6,7 @@ import { updateSessionStore } from "../../config/sessions.js";
 import { resolveSessionTranscriptPath } from "../../config/sessions/paths.js";
 import { logVerbose } from "../../globals.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
+import { checkRestartConfigPreflight } from "../../infra/restart-preflight.js";
 import { scheduleGatewaySigusr1Restart, triggerClawdbotRestart } from "../../infra/restart.js";
 import { parseActivationCommand } from "../group-activation.js";
 import { parseSendPolicyCommand } from "../send-policy.js";
@@ -20,6 +21,7 @@ import {
 } from "./abort.js";
 import type { CommandHandler } from "./commands-types.js";
 import { clearSessionQueues } from "./queue.js";
+import { isRoutableChannel, routeReply } from "./route-reply.js";
 
 function resolveSessionEntryForKey(
   store: Record<string, SessionEntry> | undefined,
@@ -231,6 +233,36 @@ export const handleRestartCommand: CommandHandler = async (params, allowTextComm
       shouldContinue: false,
       reply: {
         text: "⚠️ /restart is disabled. Set commands.restart=true to enable.",
+      },
+    };
+  }
+  const preflight = await checkRestartConfigPreflight();
+  if (!preflight.ok) {
+    if (params.isGroup && isRoutableChannel(params.command.channel)) {
+      const owners = params.command.ownerList.map((entry) => entry.trim()).filter(Boolean);
+      const ownerAlert = `⚠️ Clawdbot alert\nReason: invalid_config_restart\nChannel: ${
+        params.command.channel
+      }\nSession: ${params.sessionKey}\n\n${preflight.message}`;
+      for (const owner of owners) {
+        try {
+          await routeReply({
+            payload: { text: ownerAlert, isError: true },
+            channel: params.command.channel,
+            to: owner,
+            sessionKey: params.sessionKey,
+            accountId: params.ctx.AccountId,
+            cfg: params.cfg,
+            mirror: false,
+          });
+        } catch {
+          // Best-effort owner DM; keep the local refusal deterministic.
+        }
+      }
+    }
+    return {
+      shouldContinue: false,
+      reply: {
+        text: `⚠️ ${preflight.message}`,
       },
     };
   }

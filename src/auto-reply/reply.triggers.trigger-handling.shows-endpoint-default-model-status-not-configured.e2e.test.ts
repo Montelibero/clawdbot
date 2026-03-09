@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { normalizeTestText } from "../../test/helpers/normalize-text.js";
@@ -49,6 +50,8 @@ const modelCatalogMocks = vi.hoisted(() => ({
 vi.mock("../agents/model-catalog.js", () => modelCatalogMocks);
 
 import { abortEmbeddedPiRun, runEmbeddedPiAgent } from "../agents/pi-embedded.js";
+import * as restartModule from "../infra/restart.js";
+import * as routeReplyModule from "./reply/route-reply.js";
 import { getReplyFromConfig } from "./reply.js";
 
 const _MAIN_SESSION_KEY = "agent:main:main";
@@ -184,6 +187,90 @@ describe("trigger handling", () => {
       const text = Array.isArray(res) ? res[0]?.text : res?.text;
       expect(text?.startsWith("⚙️ Restarting") || text?.startsWith("⚠️ Restart failed")).toBe(true);
       expect(runEmbeddedPiAgent).not.toHaveBeenCalled();
+    });
+  });
+  it("blocks /restart on invalid config and tries to notify owners", async () => {
+    await withTempHome(async (home) => {
+      const { resolveConfigPath } = await import("../config/config.js");
+      await fs.mkdir(join(home, ".clawdbot"), { recursive: true });
+      await fs.writeFile(resolveConfigPath(), "{ invalid", "utf-8");
+
+      const scheduleSpy = vi.spyOn(restartModule, "scheduleGatewaySigusr1Restart");
+      const triggerSpy = vi.spyOn(restartModule, "triggerClawdbotRestart");
+      const routeSpy = vi.spyOn(routeReplyModule, "routeReply").mockResolvedValue({ ok: true });
+      const cfg = {
+        ...makeCfg(home),
+        commands: { restart: true },
+        channels: {
+          whatsapp: {
+            allowFrom: ["+1001"],
+          },
+        },
+      };
+      const res = await getReplyFromConfig(
+        {
+          Body: "/restart",
+          From: "+1001",
+          To: "+2000",
+          ChatType: "group",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "agent:main:whatsapp:group:123",
+          CommandAuthorized: true,
+        },
+        {},
+        cfg,
+      );
+      const text = Array.isArray(res) ? res[0]?.text : res?.text;
+      expect(text).toContain("Restart blocked");
+      expect(text).toContain("config is invalid");
+      expect(scheduleSpy).not.toHaveBeenCalled();
+      expect(triggerSpy).not.toHaveBeenCalled();
+      expect(routeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: "whatsapp",
+          to: "+1001",
+          mirror: false,
+        }),
+      );
+    });
+  });
+  it("still replies locally when owner notification fails", async () => {
+    await withTempHome(async (home) => {
+      const { resolveConfigPath } = await import("../config/config.js");
+      await fs.mkdir(join(home, ".clawdbot"), { recursive: true });
+      await fs.writeFile(resolveConfigPath(), "{ invalid", "utf-8");
+
+      const scheduleSpy = vi.spyOn(restartModule, "scheduleGatewaySigusr1Restart");
+      const triggerSpy = vi.spyOn(restartModule, "triggerClawdbotRestart");
+      vi.spyOn(routeReplyModule, "routeReply").mockRejectedValue(new Error("dm failed"));
+      const cfg = {
+        ...makeCfg(home),
+        commands: { restart: true },
+        channels: {
+          whatsapp: {
+            allowFrom: ["+1001"],
+          },
+        },
+      };
+      const res = await getReplyFromConfig(
+        {
+          Body: "/restart",
+          From: "+1001",
+          To: "+2000",
+          ChatType: "group",
+          Provider: "whatsapp",
+          Surface: "whatsapp",
+          SessionKey: "agent:main:whatsapp:group:123",
+          CommandAuthorized: true,
+        },
+        {},
+        cfg,
+      );
+      const text = Array.isArray(res) ? res[0]?.text : res?.text;
+      expect(text).toContain("Restart blocked");
+      expect(scheduleSpy).not.toHaveBeenCalled();
+      expect(triggerSpy).not.toHaveBeenCalled();
     });
   });
   it("reports status without invoking the agent", async () => {
