@@ -130,19 +130,27 @@ export function resolveCommandAuthorization(params: {
   const allowAll =
     allowFromList.length === 0 || allowFromList.some((entry) => entry.trim() === "*");
 
-  // Even when allowAll ("*") is set, we still want to know explicit owner entries
-  // so we can send owner-only alerts (and detect whether the sender is an owner).
-  const ownerCandidates = allowFromList.filter((entry) => entry !== "*");
-  if (!allowAll && ownerCandidates.length === 0 && to) {
-    const normalizedTo = normalizeAllowFromEntry({
-      dock,
-      cfg,
-      accountId: ctx.AccountId,
-      value: to,
-    });
-    if (normalizedTo.length > 0) ownerCandidates.push(...normalizedTo);
+  // If the dock provides a resolveOwner function, use it exclusively for ownerList
+  // (e.g. Telegram: first entry from pairing store, never config allowFrom).
+  // Otherwise fall back to explicit non-wildcard entries from allowFromList.
+  const ownerFromDock = dock?.config?.resolveOwner?.();
+  let ownerList: string[];
+  if (ownerFromDock !== undefined) {
+    ownerList = ownerFromDock ? [ownerFromDock] : [];
+  } else {
+    // When allowAll, don't populate ownerList from config (reverts 1103cf052 bug).
+    const ownerCandidates = allowAll ? [] : allowFromList.filter((entry) => entry !== "*");
+    if (ownerCandidates.length === 0 && !allowAll && to) {
+      const normalizedTo = normalizeAllowFromEntry({
+        dock,
+        cfg,
+        accountId: ctx.AccountId,
+        value: to,
+      });
+      if (normalizedTo.length > 0) ownerCandidates.push(...normalizedTo);
+    }
+    ownerList = Array.from(new Set(ownerCandidates));
   }
-  const ownerList = Array.from(new Set(ownerCandidates));
 
   const senderCandidates = resolveSenderCandidates({
     dock,

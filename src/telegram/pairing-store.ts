@@ -94,6 +94,17 @@ export async function approveTelegramPairingCode(params: {
   return { chatId: res.id, entry };
 }
 
+let _cachedTelegramOwner: string | undefined = undefined;
+
+export async function initTelegramOwnerCache(env?: NodeJS.ProcessEnv): Promise<void> {
+  const store = await readTelegramAllowFromStore(env).catch(() => []);
+  _cachedTelegramOwner = store[0] ?? undefined;
+}
+
+export function getCachedTelegramOwner(): string | undefined {
+  return _cachedTelegramOwner;
+}
+
 export async function resolveTelegramEffectiveAllowFrom(params: {
   cfg: ClawdbotConfig;
   env?: NodeJS.ProcessEnv;

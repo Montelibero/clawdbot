@@ -84,6 +84,8 @@ vi.mock("./pairing-store.js", () => ({
     code: "PAIRCODE",
     created: true,
   })),
+  getCachedTelegramOwner: vi.fn((): string | undefined => undefined),
+  initTelegramOwnerCache: vi.fn(async () => {}),
 }));
 
 vi.mock("../auto-reply/reply.js", () => {

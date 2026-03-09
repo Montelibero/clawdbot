@@ -9,6 +9,7 @@ import { resolveTelegramAccount } from "./accounts.js";
 import { resolveTelegramAllowedUpdates } from "./allowed-updates.js";
 import { createTelegramBot } from "./bot.js";
 import { makeProxyFetch } from "./proxy.js";
+import { initTelegramOwnerCache } from "./pairing-store.js";
 import { readTelegramUpdateOffset, writeTelegramUpdateOffset } from "./update-offset-store.js";
 import { startTelegramWebhook } from "./webhook.js";
 
@@ -80,6 +81,7 @@ export async function monitorTelegramProvider(opts: MonitorTelegramOpts = {}) {
     cfg,
     accountId: opts.accountId,
   });
+  await initTelegramOwnerCache();
   const token = opts.token?.trim() || account.token;
   if (!token) {
     throw new Error(

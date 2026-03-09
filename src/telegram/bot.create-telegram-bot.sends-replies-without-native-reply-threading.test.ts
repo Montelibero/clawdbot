@@ -39,17 +39,26 @@ vi.mock("../config/sessions.js", async (importOriginal) => {
   };
 });
 
-const { readTelegramAllowFromStore, upsertTelegramPairingRequest } = vi.hoisted(() => ({
+const {
+  readTelegramAllowFromStore,
+  upsertTelegramPairingRequest,
+  getCachedTelegramOwner,
+  initTelegramOwnerCache,
+} = vi.hoisted(() => ({
   readTelegramAllowFromStore: vi.fn(async () => [] as string[]),
   upsertTelegramPairingRequest: vi.fn(async () => ({
     code: "PAIRCODE",
     created: true,
   })),
+  getCachedTelegramOwner: vi.fn((): string | undefined => undefined),
+  initTelegramOwnerCache: vi.fn(async () => {}),
 }));
 
 vi.mock("./pairing-store.js", () => ({
   readTelegramAllowFromStore,
   upsertTelegramPairingRequest,
+  getCachedTelegramOwner,
+  initTelegramOwnerCache,
 }));
 
 const useSpy = vi.fn();
