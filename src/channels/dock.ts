@@ -5,7 +5,7 @@ import { resolveSignalAccount } from "../signal/accounts.js";
 import { resolveSlackAccount, resolveSlackReplyToMode } from "../slack/accounts.js";
 import { buildSlackThreadingToolContext } from "../slack/threading-tool-context.js";
 import { resolveTelegramAccount } from "../telegram/accounts.js";
-import { getCachedTelegramOwner } from "../telegram/pairing-store.js";
+import { getTelegramOwner } from "../telegram/owner-cache.js";
 import { normalizeAccountId } from "../routing/session-key.js";
 import { normalizeE164 } from "../utils.js";
 import { resolveWhatsAppAccount } from "../web/accounts.js";
@@ -111,7 +111,7 @@ const DOCKS: Record<ChatChannelId, ChannelDock> = {
           .filter(Boolean)
           .map((entry) => entry.replace(/^(telegram|tg):/i, ""))
           .map((entry) => entry.toLowerCase()),
-      resolveOwner: getCachedTelegramOwner,
+      resolveOwner: getTelegramOwner,
     },
     groups: {
       resolveRequireMention: resolveTelegramGroupRequireMention,

@@ -1,4 +1,5 @@
 import type { ClawdbotConfig } from "../config/config.js";
+import { getTelegramOwner, setTelegramOwner } from "./owner-cache.js";
 import {
   addChannelAllowFromStoreEntry,
   approveChannelPairingCode,
@@ -94,15 +95,13 @@ export async function approveTelegramPairingCode(params: {
   return { chatId: res.id, entry };
 }
 
-let _cachedTelegramOwner: string | undefined = undefined;
-
 export async function initTelegramOwnerCache(env?: NodeJS.ProcessEnv): Promise<void> {
   const store = await readTelegramAllowFromStore(env).catch(() => []);
-  _cachedTelegramOwner = store[0] ?? undefined;
+  setTelegramOwner(store[0] ?? undefined);
 }
 
 export function getCachedTelegramOwner(): string | undefined {
-  return _cachedTelegramOwner;
+  return getTelegramOwner();
 }
 
 export async function resolveTelegramEffectiveAllowFrom(params: {
