@@ -582,12 +582,7 @@ export async function runReplyAgent(params: {
     didLogHeartbeatStrip = payloadResult.didLogHeartbeatStrip;
 
     if (replyPayloads.length === 0) {
-      const text = "⚠️ No reply from agent.\nLogs: clawdbot logs --follow";
-      if (shouldSuppressOriginErrors) {
-        await notifyOwners({ text, reason: "no_reply" });
-        return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
-      }
-      return finalizeWithFollowup({ text, isError: true }, queueKey, runFollowupTurn);
+      return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
     }
 
     if (shouldSuppressOriginErrors) {
