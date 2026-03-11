@@ -348,22 +348,6 @@ export function createFollowupRunner(params: {
         queued.originatingChannel ??
         (queued.run.messageProvider?.toLowerCase() as OriginatingChannelType | undefined);
       if (payloadArray.length === 0) {
-        const text = "⚠️ No reply from agent.\nLogs: clawdbot logs --follow";
-        if (!isOwnerSender) {
-          await notifyOwners(queued, { text, reason: "no_reply" });
-          return;
-        }
-        if (isRoutableChannel(replyToChannel) && queued.originatingTo) {
-          await routeReply({
-            payload: { text, isError: true },
-            channel: replyToChannel,
-            to: queued.originatingTo,
-            sessionKey: queued.run.sessionKey,
-            accountId: queued.originatingAccountId,
-            threadId: queued.originatingThreadId,
-            cfg: queued.run.config,
-          });
-        }
         return;
       }
       const sanitizedPayloads = payloadArray.flatMap((payload) => {

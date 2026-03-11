@@ -554,12 +554,7 @@ export async function runReplyAgent(params: {
     // Otherwise, a late typing trigger (e.g. from a tool callback) can outlive the run and
     // keep the typing indicator stuck.
     if (payloadArray.length === 0) {
-      const text = "⚠️ No reply from agent.\nLogs: clawdbot logs --follow";
-      if (shouldSuppressOriginErrors) {
-        await notifyOwners({ text, reason: "no_reply" });
-        return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
-      }
-      return finalizeWithFollowup({ text, isError: true }, queueKey, runFollowupTurn);
+      return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
     }
 
     const payloadResult = buildReplyPayloads({
