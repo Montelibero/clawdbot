@@ -524,39 +524,13 @@ export async function runReplyAgent(params: {
             update: async () => ({ lastUsageWarningAt: Date.now() }),
           });
         }
-        const isDirectMessage = sessionCtx.ChatType === "direct";
-        if (isOwnerSender && isDirectMessage) {
-          await routeReply({
-            payload: { text: sessionWarning },
-            channel: replyToChannel,
-            to: sessionCtx.OriginatingTo,
-            sessionKey,
-            accountId: sessionCtx.AccountId,
-            threadId: sessionCtx.MessageThreadId,
-            cfg,
-          });
-        } else {
-          await notifyOwners({ text: sessionWarning, reason: "session_usage_warning" });
-        }
+        await notifyOwners({ text: sessionWarning, reason: "session_usage_warning" });
       }
 
       // Hourly global threshold warning
       const hourlyWarning = checkHourlyTokenThreshold();
       if (hourlyWarning) {
-        const isDirectMessage = sessionCtx.ChatType === "direct";
-        if (isOwnerSender && isDirectMessage) {
-          await routeReply({
-            payload: { text: hourlyWarning },
-            channel: replyToChannel,
-            to: sessionCtx.OriginatingTo,
-            sessionKey,
-            accountId: sessionCtx.AccountId,
-            threadId: sessionCtx.MessageThreadId,
-            cfg,
-          });
-        } else {
-          await notifyOwners({ text: hourlyWarning, reason: "hourly_usage_warning" });
-        }
+        await notifyOwners({ text: hourlyWarning, reason: "hourly_usage_warning" });
       }
     }
 
