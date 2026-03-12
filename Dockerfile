@@ -14,6 +14,7 @@ RUN curl -fsSL https://astral.sh/uv/install.sh | sh && \
 
 # Install system utilities and Python tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     jq \
     zip \
     unzip \
@@ -69,6 +70,10 @@ RUN pnpm -C ui install --prod --no-frozen-lockfile --ignore-workspace
 RUN pnpm -C ui run build
 
 ENV NODE_ENV=production
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:18789/health || exit 1
 
 # Security hardening: Run as non-root user
 # The node:22-bookworm image includes a 'node' user (uid 1000)

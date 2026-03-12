@@ -29,6 +29,7 @@ import {
 import { applyHookMappings } from "./hooks-mapping.js";
 import { handleOpenAiHttpRequest } from "./openai-http.js";
 import { handleOpenResponsesHttpRequest } from "./openresponses-http.js";
+import { getHealthCache } from "./server/health-state.js";
 import { handleToolsInvokeHttpRequest } from "./tools-invoke-http.js";
 
 type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
@@ -237,6 +238,48 @@ export function createGatewayHttpServer(opts: {
 
     try {
       const configSnapshot = loadConfig();
+
+      // --- Health check endpoint ---
+      if (req.method === "GET" && (req.url === "/health" || req.url === "/healthz")) {
+        const health = getHealthCache();
+        if (!health) {
+          sendJson(res, 503, { ok: false, error: "Health cache not initialized" });
+          return;
+        }
+
+        const PENDING_UPDATE_THRESHOLD = 10;
+        const issues: string[] = [];
+
+        // Check Telegram pending updates
+        if (health.channels?.telegram) {
+          const tg = health.channels.telegram;
+          const accounts = tg.accounts || { [tg.accountId]: tg };
+          for (const accountId in accounts) {
+            const probe = accounts[accountId]?.probe as any;
+            const pending = probe?.webhook?.pendingUpdateCount;
+            if (typeof pending === "number" && pending > PENDING_UPDATE_THRESHOLD) {
+              issues.push(
+                `Telegram account ${accountId} has ${pending} pending updates (threshold ${PENDING_UPDATE_THRESHOLD})`,
+              );
+            }
+          }
+        }
+
+        // Check cache age (should be refreshed every 60s by maintenance loop)
+        const cacheAgeMs = Date.now() - health.ts;
+        if (cacheAgeMs > 2 * 60 * 1000) {
+          issues.push(`Health cache is stale (${Math.round(cacheAgeMs / 1000)}s old)`);
+        }
+
+        if (issues.length > 0) {
+          sendJson(res, 503, { ok: false, issues });
+          return;
+        }
+
+        sendJson(res, 200, { ok: true, ts: health.ts });
+        return;
+      }
+
       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
       if (await handleHooksRequest(req, res)) return;
       if (

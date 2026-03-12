@@ -14,7 +14,11 @@ export type TelegramProbe = {
     canReadAllGroupMessages?: boolean | null;
     supportsInlineQueries?: boolean | null;
   };
-  webhook?: { url?: string | null; hasCustomCert?: boolean | null };
+  webhook?: {
+    url?: string | null;
+    hasCustomCert?: boolean | null;
+    pendingUpdateCount?: number | null;
+  };
 };
 
 async function fetchWithTimeout(
@@ -86,12 +90,17 @@ export async function probeTelegram(
       const webhookRes = await fetchWithTimeout(`${base}/getWebhookInfo`, timeoutMs, fetcher);
       const webhookJson = (await webhookRes.json()) as {
         ok?: boolean;
-        result?: { url?: string; has_custom_certificate?: boolean };
+        result?: {
+          url?: string;
+          has_custom_certificate?: boolean;
+          pending_update_count?: number;
+        };
       };
       if (webhookRes.ok && webhookJson?.ok) {
         result.webhook = {
           url: webhookJson.result?.url ?? null,
           hasCustomCert: webhookJson.result?.has_custom_certificate ?? null,
+          pendingUpdateCount: webhookJson.result?.pending_update_count ?? null,
         };
       }
     } catch {
