@@ -9,7 +9,11 @@ import {
   resolveApiKeyForProfile,
   resolveAuthProfileOrder,
 } from "../agents/auth-profiles.js";
-import { getCustomProviderApiKey, resolveEnvApiKey } from "../agents/model-auth.js";
+import {
+  getCustomProviderApiKey,
+  resolveApiKeyForProvider,
+  resolveEnvApiKey,
+} from "../agents/model-auth.js";
 import { normalizeProviderId } from "../agents/model-selection.js";
 import { loadConfig } from "../config/config.js";
 import type { UsageProviderId } from "./provider-usage.types.js";
@@ -207,9 +211,21 @@ export async function resolveProviderAuths(params: {
 
     if (cfg.models?.providers?.[provider]?.baseUrl) {
       const pConfig = cfg.models.providers[provider];
+      let token = "";
+      try {
+        const resolved = await resolveApiKeyForProvider({
+          provider,
+          cfg,
+          agentDir: params.agentDir,
+        });
+        token = resolved.apiKey || "";
+      } catch {
+        // Fallback to static config key if resolution fails
+        token = pConfig.apiKey || "";
+      }
       auths.push({
         provider,
-        token: pConfig.apiKey || "",
+        token,
         baseUrl: pConfig.baseUrl,
       });
       continue;
