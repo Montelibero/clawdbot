@@ -23,12 +23,13 @@ export const usageProviders: UsageProviderId[] = [
   "zai",
 ];
 
+export function getProviderLabel(id: UsageProviderId): string {
+  return PROVIDER_LABELS[id] || id;
+}
+
 export function resolveUsageProviderId(provider?: string | null): UsageProviderId | undefined {
   if (!provider) return undefined;
-  const normalized = normalizeProviderId(provider);
-  return usageProviders.includes(normalized as UsageProviderId)
-    ? (normalized as UsageProviderId)
-    : undefined;
+  return normalizeProviderId(provider) as UsageProviderId;
 }
 
 export const ignoredErrors = new Set([

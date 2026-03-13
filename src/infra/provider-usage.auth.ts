@@ -18,6 +18,7 @@ export type ProviderAuth = {
   provider: UsageProviderId;
   token: string;
   accountId?: string;
+  baseUrl?: string;
 };
 
 function parseGoogleToken(apiKey: string): { token: string } | null {
@@ -188,6 +189,7 @@ export async function resolveProviderAuths(params: {
 }): Promise<ProviderAuth[]> {
   if (params.auth) return params.auth;
 
+  const cfg = loadConfig();
   const oauthProviders = resolveOAuthProviders(params.agentDir);
   const auths: ProviderAuth[] = [];
 
@@ -200,6 +202,16 @@ export async function resolveProviderAuths(params: {
     if (provider === "minimax") {
       const apiKey = resolveMinimaxApiKey();
       if (apiKey) auths.push({ provider, token: apiKey });
+      continue;
+    }
+
+    if (cfg.models?.providers?.[provider]?.baseUrl) {
+      const pConfig = cfg.models.providers[provider];
+      auths.push({
+        provider,
+        token: pConfig.apiKey || "",
+        baseUrl: pConfig.baseUrl,
+      });
       continue;
     }
 

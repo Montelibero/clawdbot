@@ -4,6 +4,7 @@ import {
   fetchClaudeUsage,
   fetchCodexUsage,
   fetchCopilotUsage,
+  fetchCustomUsage,
   fetchGeminiUsage,
   fetchMinimaxUsage,
   fetchZaiUsage,
@@ -11,7 +12,7 @@ import {
 import {
   DEFAULT_TIMEOUT_MS,
   ignoredErrors,
-  PROVIDER_LABELS,
+  getProviderLabel,
   usageProviders,
   withTimeout,
 } from "./provider-usage.shared.js";
@@ -69,9 +70,18 @@ export async function loadProviderUsageSummary(
           case "zai":
             return await fetchZaiUsage(auth.token, timeoutMs, fetchFn);
           default:
+            if (auth.baseUrl) {
+              return await fetchCustomUsage(
+                auth.provider,
+                auth.baseUrl,
+                auth.token,
+                timeoutMs,
+                fetchFn,
+              );
+            }
             return {
               provider: auth.provider,
-              displayName: PROVIDER_LABELS[auth.provider],
+              displayName: getProviderLabel(auth.provider),
               windows: [],
               error: "Unsupported provider",
             };
@@ -80,7 +90,7 @@ export async function loadProviderUsageSummary(
       timeoutMs + 1000,
       {
         provider: auth.provider,
-        displayName: PROVIDER_LABELS[auth.provider],
+        displayName: getProviderLabel(auth.provider),
         windows: [],
         error: "Timeout",
       },
