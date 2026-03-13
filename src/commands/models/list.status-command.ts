@@ -493,16 +493,27 @@ export async function modelsStatusCommand(
     }
   }
 
+  const providersWithUsageSupport = new Set<string>();
+  for (const [id, pCfg] of Object.entries(cfg.models?.providers ?? {})) {
+    if (pCfg.baseUrl) providersWithUsageSupport.add(id);
+  }
+
   runtime.log("");
   runtime.log(colorize(rich, theme.heading, "OAuth/token status"));
-  if (oauthProfiles.length === 0) {
+
+  const providersWithOauthOrUsage = new Set([
+    ...oauthProfiles.map((p) => p.provider),
+    ...Array.from(providersWithUsageSupport),
+  ]);
+
+  if (providersWithOauthOrUsage.size === 0) {
     runtime.log(colorize(rich, theme.muted, "- none"));
   } else {
     const usageByProvider = new Map<string, string>();
     const usageProviders = Array.from(
       new Set(
-        oauthProfiles
-          .map((profile) => resolveUsageProviderId(profile.provider))
+        Array.from(providersWithOauthOrUsage)
+          .map((provider) => resolveUsageProviderId(provider))
           .filter((provider): provider is UsageProviderId => Boolean(provider)),
       ),
     );
@@ -543,10 +554,17 @@ export async function modelsStatusCommand(
       else profilesByProvider.set(profile.provider, [profile]);
     }
 
-    for (const [provider, profiles] of profilesByProvider) {
+    const sortedProviders = Array.from(providersWithOauthOrUsage).sort();
+
+    for (const provider of sortedProviders) {
+      const profiles = profilesByProvider.get(provider) ?? [];
       const usageKey = resolveUsageProviderId(provider);
       const usage = usageKey ? usageByProvider.get(usageKey) : undefined;
       const usageSuffix = usage ? colorize(rich, theme.muted, ` usage: ${usage}`) : "";
+
+      // Skip providers that have neither OAuth profiles nor usage data
+      if (profiles.length === 0 && !usage) continue;
+
       runtime.log(`- ${colorize(rich, theme.heading, provider)}${usageSuffix}`);
       for (const profile of profiles) {
         const labelText = profile.label || profile.profileId;
