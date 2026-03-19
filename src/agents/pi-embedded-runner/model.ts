@@ -68,10 +68,18 @@ export function resolveModel(
     }
     const providerCfg = providers[provider];
     if (providerCfg || modelId.startsWith("mock-")) {
+      const providerBaseUrl =
+        typeof providerCfg?.baseUrl === "string" ? providerCfg.baseUrl.trim() : "";
+      const providerApiKey =
+        typeof providerCfg?.apiKey === "string" ? providerCfg.apiKey.trim() : undefined;
+      const providerHeaders = providerCfg?.headers ? { ...providerCfg.headers } : undefined;
       const fallbackModel: Model<Api> = normalizeModelCompat({
         id: modelId,
         name: modelId,
         api: providerCfg?.api ?? "openai-responses",
+        baseUrl: providerBaseUrl,
+        apiKey: providerApiKey,
+        headers: providerHeaders,
         provider,
         reasoning: false,
         input: ["text"],
