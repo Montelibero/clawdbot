@@ -472,6 +472,9 @@ export async function runEmbeddedPiAgent(
             // FIX: Throw FailoverError for prompt errors when fallbacks configured
             // This enables model fallback for quota/rate limit errors during prompt submission
             if (fallbackAvailable && isFailoverErrorMessage(errorText)) {
+              log.warn(
+                `embedded model failover from prompt error: sessionId=${params.sessionId} sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${modelId} reason=${promptFailoverReason ?? "unknown"} fallbackAvailable=${fallbackAvailable} message=${errorText}`,
+              );
               throw new FailoverError(errorText, {
                 reason: promptFailoverReason ?? "unknown",
                 provider,
@@ -572,6 +575,9 @@ export async function runEmbeddedPiAgent(
               const status =
                 resolveFailoverStatus(assistantFailoverReason ?? "unknown") ??
                 (isTimeoutErrorMessage(message) ? 408 : undefined);
+              log.warn(
+                `embedded model failover from assistant error: sessionId=${params.sessionId} sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${modelId} reason=${assistantFailoverReason ?? "unknown"} stopReason=${lastAssistant?.stopReason ?? ""} timedOut=${timedOut} fallbackAvailable=${fallbackAvailable} message=${message}`,
+              );
               throw new FailoverError(message, {
                 reason: assistantFailoverReason ?? "unknown",
                 provider,
