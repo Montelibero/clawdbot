@@ -96,6 +96,7 @@ export async function runEmbeddedPiAgent(
       const agentDir = params.agentDir ?? resolveClawdbotAgentDir();
       const fallbackConfigured =
         (params.config?.agents?.defaults?.model?.fallbacks?.length ?? 0) > 0;
+      const fallbackAvailable = fallbackConfigured || params.allowExternalModelFallback === true;
       await ensureClawdbotModelsJson(params.config, agentDir);
 
       const { model, error, authStorage, modelRegistry } = resolveModel(
@@ -192,7 +193,7 @@ export async function runEmbeddedPiAgent(
           allInCooldown: params.allInCooldown,
           message,
         });
-        if (fallbackConfigured) {
+        if (fallbackAvailable) {
           throw new FailoverError(message, {
             reason,
             provider,
@@ -470,7 +471,7 @@ export async function runEmbeddedPiAgent(
             }
             // FIX: Throw FailoverError for prompt errors when fallbacks configured
             // This enables model fallback for quota/rate limit errors during prompt submission
-            if (fallbackConfigured && isFailoverErrorMessage(errorText)) {
+            if (fallbackAvailable && isFailoverErrorMessage(errorText)) {
               throw new FailoverError(errorText, {
                 reason: promptFailoverReason ?? "unknown",
                 provider,
@@ -551,7 +552,7 @@ export async function runEmbeddedPiAgent(
             const rotated = await advanceAuthProfile();
             if (rotated) continue;
 
-            if (fallbackConfigured) {
+            if (fallbackAvailable) {
               // Prefer formatted error message (user-friendly) over raw errorMessage
               const message =
                 (lastAssistant

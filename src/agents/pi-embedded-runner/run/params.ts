@@ -56,6 +56,8 @@ export type RunEmbeddedPiAgentParams = {
   disableTools?: boolean;
   provider?: string;
   model?: string;
+  /** True when a caller wraps this run in runWithModelFallback outside the runner itself. */
+  allowExternalModelFallback?: boolean;
   authProfileId?: string;
   authProfileIdSource?: "auto" | "user";
   thinkLevel?: ThinkLevel;

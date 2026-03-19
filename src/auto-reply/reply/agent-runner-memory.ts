@@ -126,6 +126,7 @@ export async function runMemoryFlushIfNeeded(params: {
           enforceFinalTag: resolveEnforceFinalTag(params.followupRun.run, provider),
           provider,
           model,
+          allowExternalModelFallback: true,
           authProfileId,
           authProfileIdSource: authProfileId
             ? params.followupRun.run.authProfileIdSource

@@ -373,6 +373,7 @@ export async function runCronIsolatedAgentTurn(params: {
           lane: params.lane ?? "cron",
           provider: providerOverride,
           model: modelOverride,
+          allowExternalModelFallback: true,
           thinkLevel,
           verboseLevel: resolvedVerboseLevel,
           timeoutMs,

@@ -441,6 +441,7 @@ export async function agentCommand(
             clientTools: opts.clientTools,
             provider: providerOverride,
             model: modelOverride,
+            allowExternalModelFallback: true,
             authProfileId,
             authProfileIdSource: authProfileId
               ? sessionEntry?.authProfileOverrideSource
