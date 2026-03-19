@@ -1,0 +1,14 @@
+diff --git a/dist/providers/openai-completions.js b/dist/providers/openai-completions.js
+index 8c974317b88de3103d664c321e79bd6e6aa0f169..0036ba87d2aa233da78b51c586d8017f12d5774f 100644
+--- a/dist/providers/openai-completions.js
++++ b/dist/providers/openai-completions.js
+@@ -104,6 +104,9 @@ export const streamOpenAICompletions = (model, context, options) => {
+                 }
+             };
+             for await (const chunk of openaiStream) {
++                if (typeof chunk.model === "string" && chunk.model.length > 0) {
++                    output.model = chunk.model;
++                }
+                 if (chunk.usage) {
+                     const cachedTokens = chunk.usage.prompt_tokens_details?.cached_tokens || 0;
+                     const reasoningTokens = chunk.usage.completion_tokens_details?.reasoning_tokens || 0;
