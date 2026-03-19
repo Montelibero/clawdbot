@@ -87,6 +87,7 @@ export type EmbeddedRunAttemptResult = {
   timedOut: boolean;
   promptError: unknown;
   sessionIdUsed: string;
+  rawResponseModel?: string;
   systemPromptReport?: SessionSystemPromptReport;
   messagesSnapshot: AgentMessage[];
   assistantTexts: string[];

@@ -15,7 +15,7 @@ vi.mock("@mariozechner/pi-ai", async () => {
     stopReason: "stop" as const,
     api: model.api,
     provider: model.provider,
-    model: model.id,
+    model: model.id === "mock-router" ? "glm-4.7" : model.id,
     usage: {
       input: 1,
       output: 1,
@@ -293,6 +293,28 @@ describe("runEmbeddedPiAgent", () => {
 
     expect(result.meta.stopReason).toBe("error");
     expect(result.meta.errorMessage).toBe("boom");
+  });
+
+  it("prefers the raw response model over the configured alias in run metadata", async () => {
+    const sessionFile = nextSessionFile();
+    const cfg = makeOpenAiConfig(["mock-router"]);
+    await ensureModels(cfg);
+
+    const result = await runEmbeddedPiAgent({
+      sessionId: "session:test",
+      sessionKey: testSessionKey,
+      sessionFile,
+      workspaceDir,
+      config: cfg,
+      prompt: "hello",
+      provider: "openai",
+      model: "mock-router",
+      timeoutMs: 5_000,
+      agentDir,
+      enqueue: immediateEnqueue,
+    });
+
+    expect(result.meta.agentMeta?.model).toBe("glm-4.7");
   });
 
   it(

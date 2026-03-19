@@ -671,7 +671,11 @@ export async function runEmbeddedPiAgent(
           const agentMeta: EmbeddedPiAgentMeta = {
             sessionId: sessionIdUsed,
             provider: lastAssistant?.provider ?? recoveredAssistantError?.provider ?? provider,
-            model: lastAssistant?.model ?? recoveredAssistantError?.model ?? model.id,
+            model:
+              attempt.rawResponseModel?.trim() ||
+              lastAssistant?.model ||
+              recoveredAssistantError?.model ||
+              model.id,
             usage,
           };
 

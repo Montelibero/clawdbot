@@ -494,6 +494,7 @@ export async function runEmbeddedAttempt(
         modelApi: params.model.api,
         workspaceDir: params.workspaceDir,
       });
+      let rawResponseModel: string | undefined;
 
       // Force a stable streamFn reference so vitest can reliably mock @mariozechner/pi-ai.
       activeSession.agent.streamFn = streamSimple;
@@ -518,6 +519,59 @@ export async function runEmbeddedAttempt(
         activeSession.agent.streamFn = anthropicPayloadLogger.wrapStreamFn(
           activeSession.agent.streamFn,
         );
+      }
+      const baseStreamFn = activeSession.agent.streamFn;
+      if (baseStreamFn) {
+        activeSession.agent.streamFn = (model, context, options) => {
+          const stream = baseStreamFn(model, context, options);
+          const captureEventModel = (evt: unknown) => {
+            if (!evt || typeof evt !== "object" || !("type" in evt)) return;
+            if (evt.type !== "done") return;
+            const message =
+              "message" in evt && evt.message && typeof evt.message === "object"
+                ? (evt.message as { model?: unknown })
+                : undefined;
+            const eventModel =
+              message && typeof message.model === "string" ? message.model.trim() : undefined;
+            if (eventModel) rawResponseModel = eventModel;
+          };
+          if ("subscribe" in stream && typeof stream.subscribe === "function") {
+            stream.subscribe(captureEventModel);
+            return stream;
+          }
+          if (Symbol.asyncIterator in stream) {
+            const iterable = stream as AsyncIterable<unknown> & {
+              [Symbol.asyncIterator](): AsyncIterator<unknown>;
+            };
+            const originalIterator = iterable[Symbol.asyncIterator].bind(iterable);
+            iterable[Symbol.asyncIterator] = function () {
+              const iterator = originalIterator();
+              return {
+                async next(...args: [] | [unknown]) {
+                  const result = await iterator.next(...args);
+                  if (!result.done) captureEventModel(result.value);
+                  return result;
+                },
+                async return(value?: unknown) {
+                  if (typeof iterator.return === "function") {
+                    return iterator.return(value);
+                  }
+                  return { done: true, value } as IteratorReturnResult<unknown>;
+                },
+                async throw(error?: unknown) {
+                  if (typeof iterator.throw === "function") {
+                    return iterator.throw(error);
+                  }
+                  throw error;
+                },
+                [Symbol.asyncIterator]() {
+                  return this;
+                },
+              };
+            };
+          }
+          return stream;
+        };
       }
 
       try {
@@ -865,6 +919,7 @@ export async function runEmbeddedAttempt(
         timedOut,
         promptError,
         sessionIdUsed,
+        rawResponseModel,
         systemPromptReport,
         messagesSnapshot,
         assistantTexts,
