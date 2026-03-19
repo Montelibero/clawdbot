@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("./run/attempt.js", () => ({
@@ -131,11 +134,15 @@ vi.mock("../pi-embedded-helpers.js", async () => {
       const lower = msg.toLowerCase();
       return lower.includes("request_too_large") || lower.includes("request size exceeds");
     },
-    isFailoverAssistantError: vi.fn(() => false),
-    isFailoverErrorMessage: vi.fn(() => false),
+    isFailoverAssistantError: vi.fn((assistant?: { errorMessage?: string }) =>
+      Boolean(assistant?.errorMessage?.includes("429")),
+    ),
+    isFailoverErrorMessage: vi.fn((msg?: string) => Boolean(msg?.includes("429"))),
     isAuthAssistantError: vi.fn(() => false),
-    isRateLimitAssistantError: vi.fn(() => false),
-    classifyFailoverReason: vi.fn(() => null),
+    isRateLimitAssistantError: vi.fn((assistant?: { errorMessage?: string }) =>
+      Boolean(assistant?.errorMessage?.includes("429")),
+    ),
+    classifyFailoverReason: vi.fn((msg?: string) => (msg?.includes("429") ? "rate_limit" : null)),
     formatAssistantErrorText: vi.fn(() => ""),
     pickFallbackThinkingLevel: vi.fn(() => null),
     isTimeoutErrorMessage: vi.fn(() => false),
@@ -281,5 +288,50 @@ describe("overflow compaction in run loop", () => {
     expect(mockedCompactDirect).not.toHaveBeenCalled();
     expect(mockedRunEmbeddedAttempt).toHaveBeenCalledTimes(1);
     expect(result.meta.error?.kind).toBe("compaction_failure");
+  });
+
+  it("throws failover when transcript contains assistant 429 but lastAssistant is missing", async () => {
+    const sessionFile = path.join(
+      os.tmpdir(),
+      `embedded-runner-429-${Date.now()}-${Math.random().toString(16).slice(2)}.jsonl`,
+    );
+    await fs.writeFile(
+      sessionFile,
+      [
+        JSON.stringify({
+          type: "message",
+          message: { role: "user", content: [{ type: "text", text: "привет" }] },
+        }),
+        JSON.stringify({
+          type: "message",
+          message: {
+            role: "assistant",
+            content: [],
+            provider: "custom",
+            model: "default_combo",
+            stopReason: "error",
+            errorMessage: "429 API key token limit exceeded: daily limit reached",
+          },
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+
+    mockedRunEmbeddedAttempt.mockResolvedValue(
+      makeAttemptResult({
+        lastAssistant: undefined,
+        assistantTexts: [],
+      }),
+    );
+
+    await expect(
+      runEmbeddedPiAgent({
+        ...baseParams,
+        sessionFile,
+        provider: "custom",
+        model: "default_combo",
+        allowExternalModelFallback: true,
+      }),
+    ).rejects.toThrow(/429 API key token limit exceeded/);
   });
 });

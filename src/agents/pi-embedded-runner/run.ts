@@ -66,6 +66,49 @@ function scrubAnthropicRefusalMagic(prompt: string): string {
   );
 }
 
+type RecoveredAssistantError = {
+  stopReason?: string;
+  errorMessage?: string;
+  provider?: string;
+  model?: string;
+};
+
+async function recoverAssistantErrorFromSession(
+  sessionFile: string,
+): Promise<RecoveredAssistantError | undefined> {
+  try {
+    const raw = await fs.readFile(sessionFile, "utf8");
+    const lines = raw.split("\n");
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const line = lines[i]?.trim();
+      if (!line) continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (!parsed || typeof parsed !== "object") continue;
+      const message = (parsed as { message?: Record<string, unknown> }).message;
+      if (!message || message.role !== "assistant") continue;
+      const stopReason =
+        typeof message.stopReason === "string" ? message.stopReason.trim() : undefined;
+      const errorMessage =
+        typeof message.errorMessage === "string" ? message.errorMessage.trim() : undefined;
+      if (stopReason !== "error" || !errorMessage) continue;
+      return {
+        stopReason,
+        errorMessage,
+        provider: typeof message.provider === "string" ? message.provider : undefined,
+        model: typeof message.model === "string" ? message.model : undefined,
+      };
+    }
+  } catch {
+    // Best-effort recovery only. If the transcript is unavailable, keep the original path.
+  }
+  return undefined;
+}
+
 export async function runEmbeddedPiAgent(
   params: RunEmbeddedPiAgentParams,
 ): Promise<EmbeddedPiRunResult> {
@@ -357,6 +400,12 @@ export async function runEmbeddedPiAgent(
           });
 
           const { aborted, promptError, timedOut, sessionIdUsed, lastAssistant } = attempt;
+          const recoveredAssistantError =
+            !lastAssistant && !aborted
+              ? await recoverAssistantErrorFromSession(params.sessionFile)
+              : undefined;
+          const recoveredErrorMessage = recoveredAssistantError?.errorMessage;
+          const recoveredStopReason = recoveredAssistantError?.stopReason;
 
           if (promptError && !aborted) {
             const errorText = describeUnknownError(promptError);
@@ -487,7 +536,7 @@ export async function runEmbeddedPiAgent(
           }
 
           const fallbackThinking = pickFallbackThinkingLevel({
-            message: lastAssistant?.errorMessage,
+            message: lastAssistant?.errorMessage ?? recoveredErrorMessage,
             attempted: attemptedThinking,
           });
           if (fallbackThinking && !aborted) {
@@ -499,11 +548,18 @@ export async function runEmbeddedPiAgent(
           }
 
           const authFailure = isAuthAssistantError(lastAssistant);
-          const rateLimitFailure = isRateLimitAssistantError(lastAssistant);
-          const failoverFailure = isFailoverAssistantError(lastAssistant);
-          const assistantFailoverReason = classifyFailoverReason(lastAssistant?.errorMessage ?? "");
+          const assistantErrorMessage = lastAssistant?.errorMessage ?? recoveredErrorMessage;
+          const assistantStopReason = lastAssistant?.stopReason ?? recoveredStopReason;
+          const assistantFailoverReason = classifyFailoverReason(assistantErrorMessage ?? "");
+          const assistantFailoverMessage = isFailoverErrorMessage(assistantErrorMessage ?? "");
+          const rateLimitFailure =
+            isRateLimitAssistantError(lastAssistant) || assistantFailoverReason === "rate_limit";
+          const failoverFailure =
+            isFailoverAssistantError(lastAssistant) ||
+            Boolean(assistantFailoverReason) ||
+            assistantFailoverMessage;
           const cloudCodeAssistFormatError = attempt.cloudCodeAssistFormatError;
-          const imageDimensionError = parseImageDimensionError(lastAssistant?.errorMessage ?? "");
+          const imageDimensionError = parseImageDimensionError(assistantErrorMessage ?? "");
 
           if (imageDimensionError && lastProfileId) {
             const details = [
@@ -565,6 +621,7 @@ export async function runEmbeddedPiAgent(
                     })
                   : undefined) ||
                 lastAssistant?.errorMessage?.trim() ||
+                recoveredErrorMessage ||
                 (timedOut
                   ? "LLM request timed out."
                   : rateLimitFailure
@@ -576,7 +633,7 @@ export async function runEmbeddedPiAgent(
                 resolveFailoverStatus(assistantFailoverReason ?? "unknown") ??
                 (isTimeoutErrorMessage(message) ? 408 : undefined);
               log.warn(
-                `embedded model failover from assistant error: sessionId=${params.sessionId} sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${modelId} reason=${assistantFailoverReason ?? "unknown"} stopReason=${lastAssistant?.stopReason ?? ""} timedOut=${timedOut} fallbackAvailable=${fallbackAvailable} message=${message}`,
+                `embedded model failover from assistant error: sessionId=${params.sessionId} sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${modelId} reason=${assistantFailoverReason ?? "unknown"} stopReason=${assistantStopReason ?? ""} timedOut=${timedOut} fallbackAvailable=${fallbackAvailable} message=${message}`,
               );
               throw new FailoverError(message, {
                 reason: assistantFailoverReason ?? "unknown",
@@ -591,8 +648,8 @@ export async function runEmbeddedPiAgent(
           const usage = normalizeUsage(lastAssistant?.usage as UsageLike);
           const agentMeta: EmbeddedPiAgentMeta = {
             sessionId: sessionIdUsed,
-            provider: lastAssistant?.provider ?? provider,
-            model: lastAssistant?.model ?? model.id,
+            provider: lastAssistant?.provider ?? recoveredAssistantError?.provider ?? provider,
+            model: lastAssistant?.model ?? recoveredAssistantError?.model ?? model.id,
             usage,
           };
 
@@ -632,8 +689,10 @@ export async function runEmbeddedPiAgent(
               agentMeta,
               aborted,
               systemPromptReport: attempt.systemPromptReport,
-              stopReason: attempt.clientToolCall ? "tool_calls" : attempt.lastAssistant?.stopReason,
-              errorMessage: attempt.lastAssistant?.errorMessage?.trim() || undefined,
+              stopReason: attempt.clientToolCall
+                ? "tool_calls"
+                : (attempt.lastAssistant?.stopReason ?? recoveredStopReason),
+              errorMessage: attempt.lastAssistant?.errorMessage?.trim() || recoveredErrorMessage,
               // Handle client tool calls (OpenResponses hosted tools)
               pendingToolCalls: attempt.clientToolCall
                 ? [
