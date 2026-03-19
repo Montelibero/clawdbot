@@ -3,6 +3,18 @@ import { normalizeProviderId } from "../model-selection.js";
 import { saveAuthProfileStore, updateAuthProfileStoreWithLock } from "./store.js";
 import type { AuthProfileFailureReason, AuthProfileStore, ProfileUsageStats } from "./types.js";
 
+export function resolveAuthProfileUsageKey(params: {
+  profileId: string;
+  reason?: AuthProfileFailureReason;
+  modelId?: string;
+}): string {
+  const modelId = params.modelId?.trim();
+  if (modelId && (params.reason === "rate_limit" || params.reason === "timeout")) {
+    return `${params.profileId}::model=${modelId}`;
+  }
+  return params.profileId;
+}
+
 function resolveProfileUnusableUntil(stats: ProfileUsageStats): number | null {
   const values = [stats.cooldownUntil, stats.disabledUntil]
     .filter((value): value is number => typeof value === "number")
@@ -14,8 +26,12 @@ function resolveProfileUnusableUntil(stats: ProfileUsageStats): number | null {
 /**
  * Check if a profile is currently in cooldown (due to rate limiting or errors).
  */
-export function isProfileInCooldown(store: AuthProfileStore, profileId: string): boolean {
-  const stats = store.usageStats?.[profileId];
+export function isProfileInCooldown(
+  store: AuthProfileStore,
+  profileId: string,
+  usageKey?: string,
+): boolean {
+  const stats = store.usageStats?.[usageKey ?? profileId] ?? store.usageStats?.[profileId];
   if (!stats) return false;
   const unusableUntil = resolveProfileUnusableUntil(stats);
   return unusableUntil ? Date.now() < unusableUntil : false;
@@ -192,17 +208,19 @@ export async function markAuthProfileFailure(params: {
   store: AuthProfileStore;
   profileId: string;
   reason: AuthProfileFailureReason;
+  modelId?: string;
   cfg?: ClawdbotConfig;
   agentDir?: string;
 }): Promise<void> {
-  const { store, profileId, reason, agentDir, cfg } = params;
+  const { store, profileId, reason, modelId, agentDir, cfg } = params;
+  const usageKey = resolveAuthProfileUsageKey({ profileId, reason, modelId });
   const updated = await updateAuthProfileStoreWithLock({
     agentDir,
     updater: (freshStore) => {
       const profile = freshStore.profiles[profileId];
       if (!profile) return false;
       freshStore.usageStats = freshStore.usageStats ?? {};
-      const existing = freshStore.usageStats[profileId] ?? {};
+      const existing = freshStore.usageStats[usageKey] ?? {};
 
       const now = Date.now();
       const providerKey = normalizeProviderId(profile.provider);
@@ -211,7 +229,7 @@ export async function markAuthProfileFailure(params: {
         providerId: providerKey,
       });
 
-      freshStore.usageStats[profileId] = computeNextProfileUsageStats({
+      freshStore.usageStats[usageKey] = computeNextProfileUsageStats({
         existing,
         now,
         reason,
@@ -227,7 +245,7 @@ export async function markAuthProfileFailure(params: {
   if (!store.profiles[profileId]) return;
 
   store.usageStats = store.usageStats ?? {};
-  const existing = store.usageStats[profileId] ?? {};
+  const existing = store.usageStats[usageKey] ?? {};
   const now = Date.now();
   const providerKey = normalizeProviderId(store.profiles[profileId]?.provider ?? "");
   const cfgResolved = resolveAuthCooldownConfig({
@@ -235,7 +253,7 @@ export async function markAuthProfileFailure(params: {
     providerId: providerKey,
   });
 
-  store.usageStats[profileId] = computeNextProfileUsageStats({
+  store.usageStats[usageKey] = computeNextProfileUsageStats({
     existing,
     now,
     reason,

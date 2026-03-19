@@ -63,7 +63,11 @@ const makeAttempt = (overrides: Partial<EmbeddedRunAttemptResult>): EmbeddedRunA
   ...overrides,
 });
 
-const makeConfig = (opts?: { fallbacks?: string[]; apiKey?: string }): ClawdbotConfig =>
+const makeConfig = (opts?: {
+  fallbacks?: string[];
+  apiKey?: string;
+  includeMock2?: boolean;
+}): ClawdbotConfig =>
   ({
     agents: {
       defaults: {
@@ -88,6 +92,19 @@ const makeConfig = (opts?: { fallbacks?: string[]; apiKey?: string }): ClawdbotC
               contextWindow: 16_000,
               maxTokens: 2048,
             },
+            ...(opts?.includeMock2
+              ? [
+                  {
+                    id: "mock-2",
+                    name: "Mock 2",
+                    reasoning: false,
+                    input: ["text"],
+                    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                    contextWindow: 16_000,
+                    maxTokens: 2048,
+                  },
+                ]
+              : []),
           ],
         },
       },
@@ -473,6 +490,91 @@ describe("runEmbeddedPiAgent auth profile rotation", () => {
       } else {
         process.env.OPENAI_API_KEY = previousOpenAiKey;
       }
+      await fs.rm(agentDir, { recursive: true, force: true });
+      await fs.rm(workspaceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps same-provider fallback available after model-scoped rate limit", async () => {
+    const agentDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-agent-"));
+    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "clawdbot-workspace-"));
+    try {
+      const authPath = path.join(agentDir, "auth-profiles.json");
+      await fs.writeFile(
+        authPath,
+        JSON.stringify({
+          version: 1,
+          profiles: {
+            "openai:p1": { type: "api_key", provider: "openai", key: "sk-one" },
+          },
+          usageStats: {
+            "openai:p1": { lastUsed: 1 },
+          },
+        }),
+      );
+
+      runEmbeddedAttemptMock
+        .mockResolvedValueOnce(
+          makeAttempt({
+            assistantTexts: [],
+            lastAssistant: buildAssistant({
+              stopReason: "error",
+              errorMessage: "429 API key token limit exceeded",
+              model: "mock-1",
+            }),
+          }),
+        )
+        .mockResolvedValueOnce(
+          makeAttempt({
+            assistantTexts: ["ok"],
+            lastAssistant: buildAssistant({
+              stopReason: "stop",
+              content: [{ type: "text", text: "ok" }],
+              model: "mock-2",
+            }),
+          }),
+        );
+
+      await expect(
+        runEmbeddedPiAgent({
+          sessionId: "session:test",
+          sessionKey: "agent:test:model-scoped-cooldown",
+          sessionFile: path.join(workspaceDir, "session.jsonl"),
+          workspaceDir,
+          agentDir,
+          config: makeConfig({ fallbacks: ["openai/mock-2"], includeMock2: true }),
+          prompt: "hello",
+          provider: "openai",
+          model: "mock-1",
+          authProfileId: "openai:p1",
+          authProfileIdSource: "auto",
+          timeoutMs: 5_000,
+          runId: "run:model-scoped-cooldown",
+        }),
+      ).rejects.toMatchObject({
+        name: "FailoverError",
+        reason: "rate_limit",
+        model: "mock-1",
+      });
+
+      await runEmbeddedPiAgent({
+        sessionId: "session:test",
+        sessionKey: "agent:test:model-scoped-cooldown-2",
+        sessionFile: path.join(workspaceDir, "session-2.jsonl"),
+        workspaceDir,
+        agentDir,
+        config: makeConfig({ includeMock2: true }),
+        prompt: "hello",
+        provider: "openai",
+        model: "mock-2",
+        authProfileId: "openai:p1",
+        authProfileIdSource: "auto",
+        timeoutMs: 5_000,
+        runId: "run:model-scoped-cooldown-2",
+      });
+
+      expect(runEmbeddedAttemptMock).toHaveBeenCalledTimes(2);
+    } finally {
       await fs.rm(agentDir, { recursive: true, force: true });
       await fs.rm(workspaceDir, { recursive: true, force: true });
     }
