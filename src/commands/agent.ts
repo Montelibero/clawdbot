@@ -406,6 +406,8 @@ export async function agentCommand(
             }).then((res) => {
               const failover = coerceFailoverErrorFromPayloads({
                 payloads: res.payloads,
+                stopReason: res.meta?.stopReason,
+                errorMessage: res.meta?.errorMessage,
                 provider: providerOverride,
                 model: modelOverride,
               });
@@ -465,6 +467,8 @@ export async function agentCommand(
           }).then((res) => {
             const failover = coerceFailoverErrorFromPayloads({
               payloads: res.payloads,
+              stopReason: res.meta?.stopReason,
+              errorMessage: res.meta?.errorMessage,
               provider: providerOverride,
               model: modelOverride,
             });

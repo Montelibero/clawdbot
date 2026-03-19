@@ -182,6 +182,8 @@ export async function runAgentTurnWithFallback(params: {
               .then((result) => {
                 const failover = coerceFailoverErrorFromPayloads({
                   payloads: result.payloads,
+                  stopReason: result.meta?.stopReason,
+                  errorMessage: result.meta?.errorMessage,
                   provider,
                   model,
                 });
@@ -419,6 +421,8 @@ export async function runAgentTurnWithFallback(params: {
           }).then((res) => {
             const failover = coerceFailoverErrorFromPayloads({
               payloads: res.payloads,
+              stopReason: res.meta?.stopReason,
+              errorMessage: res.meta?.errorMessage,
               provider,
               model,
             });

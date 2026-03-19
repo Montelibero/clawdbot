@@ -625,8 +625,9 @@ export async function runEmbeddedPiAgent(
               agentMeta,
               aborted,
               systemPromptReport: attempt.systemPromptReport,
+              stopReason: attempt.clientToolCall ? "tool_calls" : attempt.lastAssistant?.stopReason,
+              errorMessage: attempt.lastAssistant?.errorMessage?.trim() || undefined,
               // Handle client tool calls (OpenResponses hosted tools)
-              stopReason: attempt.clientToolCall ? "tool_calls" : undefined,
               pendingToolCalls: attempt.clientToolCall
                 ? [
                     {

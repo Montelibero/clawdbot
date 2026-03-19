@@ -351,6 +351,8 @@ export async function runCronIsolatedAgentTurn(params: {
           }).then((result) => {
             const failover = coerceFailoverErrorFromPayloads({
               payloads: result.payloads,
+              stopReason: result.meta?.stopReason,
+              errorMessage: result.meta?.errorMessage,
               provider: providerOverride,
               model: modelOverride,
             });
@@ -378,6 +380,8 @@ export async function runCronIsolatedAgentTurn(params: {
         }).then((result) => {
           const failover = coerceFailoverErrorFromPayloads({
             payloads: result.payloads,
+            stopReason: result.meta?.stopReason,
+            errorMessage: result.meta?.errorMessage,
             provider: providerOverride,
             model: modelOverride,
           });

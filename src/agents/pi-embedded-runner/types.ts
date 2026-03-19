@@ -25,6 +25,8 @@ export type EmbeddedPiRunMeta = {
   };
   /** Stop reason for the agent run (e.g., "completed", "tool_calls"). */
   stopReason?: string;
+  /** Raw assistant error text surfaced for shared failover detection. */
+  errorMessage?: string;
   /** Pending tool calls when stopReason is "tool_calls". */
   pendingToolCalls?: Array<{
     id: string;

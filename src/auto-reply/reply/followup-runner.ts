@@ -277,6 +277,8 @@ export function createFollowupRunner(params: {
             }).then((res) => {
               const failover = coerceFailoverErrorFromPayloads({
                 payloads: res.payloads,
+                stopReason: res.meta?.stopReason,
+                errorMessage: res.meta?.errorMessage,
                 provider,
                 model,
               });

@@ -8,6 +8,8 @@ export function coerceFailoverErrorFromPayloads(params: {
     mediaUrl?: string;
     mediaUrls?: string[];
   }>;
+  stopReason?: string;
+  errorMessage?: string;
   provider: string;
   model: string;
 }): FailoverError | null {
@@ -27,6 +29,17 @@ export function coerceFailoverErrorFromPayloads(params: {
     const reason = classifyFailoverReason(text);
     if (!reason) continue;
     return new FailoverError(text, {
+      reason,
+      provider: params.provider,
+      model: params.model,
+      status: resolveFailoverStatus(reason),
+    });
+  }
+  const errorMessage = (params.errorMessage ?? "").trim();
+  if (params.stopReason === "error" && errorMessage) {
+    const reason = classifyFailoverReason(errorMessage);
+    if (!reason) return null;
+    return new FailoverError(errorMessage, {
       reason,
       provider: params.provider,
       model: params.model,

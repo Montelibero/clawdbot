@@ -272,6 +272,29 @@ describe("runEmbeddedPiAgent", () => {
     expect(userIndex).toBeGreaterThanOrEqual(0);
   });
 
+  it("copies assistant error metadata into the run result meta", async () => {
+    const sessionFile = nextSessionFile();
+    const cfg = makeOpenAiConfig(["mock-error"]);
+    await ensureModels(cfg);
+
+    const result = await runEmbeddedPiAgent({
+      sessionId: "session:test",
+      sessionKey: testSessionKey,
+      sessionFile,
+      workspaceDir,
+      config: cfg,
+      prompt: "boom",
+      provider: "openai",
+      model: "mock-error",
+      timeoutMs: 5_000,
+      agentDir,
+      enqueue: immediateEnqueue,
+    });
+
+    expect(result.meta.stopReason).toBe("error");
+    expect(result.meta.errorMessage).toBe("boom");
+  });
+
   it(
     "appends new user + assistant after existing transcript entries",
     { timeout: 90_000 },

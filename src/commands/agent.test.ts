@@ -196,6 +196,46 @@ describe("agentCommand", () => {
     });
   });
 
+  it("falls back to the next model when embedded error metadata signals rate limit", async () => {
+    await withTempHome(async (home) => {
+      const store = path.join(home, "sessions.json");
+      mockConfig(home, store, {
+        model: {
+          primary: "openai/gpt-4.1-mini",
+          fallbacks: ["openai/gpt-4.1-nano"],
+        },
+        models: {
+          "openai/gpt-4.1-mini": {},
+          "openai/gpt-4.1-nano": {},
+        },
+      });
+
+      vi.mocked(runEmbeddedPiAgent)
+        .mockResolvedValueOnce({
+          meta: {
+            durationMs: 5,
+            stopReason: "error",
+            errorMessage: "429 API key token limit exceeded: weekly limit reached",
+            agentMeta: { sessionId: "s1", provider: "openai", model: "gpt-4.1-mini" },
+          },
+        } as never)
+        .mockResolvedValueOnce({
+          payloads: [{ text: "fallback ok" }],
+          meta: {
+            durationMs: 5,
+            agentMeta: { sessionId: "s2", provider: "openai", model: "gpt-4.1-nano" },
+          },
+        } as never);
+
+      await agentCommand({ message: "hi", to: "+1555" }, runtime);
+
+      expect(runEmbeddedPiAgent).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(runEmbeddedPiAgent).mock.calls[0]?.[0]?.model).toBe("gpt-4.1-mini");
+      expect(vi.mocked(runEmbeddedPiAgent).mock.calls[1]?.[0]?.model).toBe("gpt-4.1-nano");
+      expect(runtime.log).toHaveBeenCalledWith("fallback ok");
+    });
+  });
+
   it("keeps explicit sessionKey even when sessionId exists elsewhere", async () => {
     await withTempHome(async (home) => {
       const store = path.join(home, "sessions.json");

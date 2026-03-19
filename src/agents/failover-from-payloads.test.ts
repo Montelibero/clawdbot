@@ -43,4 +43,39 @@ describe("coerceFailoverErrorFromPayloads", () => {
     });
     expect(err).toBeNull();
   });
+
+  it("returns FailoverError from error metadata when payloads are empty", () => {
+    const err = coerceFailoverErrorFromPayloads({
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      payloads: [],
+      stopReason: "error",
+      errorMessage: "429 API key token limit exceeded: weekly limit reached",
+    });
+    expect(err?.name).toBe("FailoverError");
+    expect(err?.reason).toBe("rate_limit");
+    expect(err?.status).toBe(429);
+  });
+
+  it("returns null for non-failover error metadata when payloads are empty", () => {
+    const err = coerceFailoverErrorFromPayloads({
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      payloads: [],
+      stopReason: "error",
+      errorMessage: "Some random error",
+    });
+    expect(err).toBeNull();
+  });
+
+  it("still returns null when non-error content exists alongside failover metadata", () => {
+    const err = coerceFailoverErrorFromPayloads({
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      payloads: [{ text: "Normal reply" }],
+      stopReason: "error",
+      errorMessage: "429 too many requests",
+    });
+    expect(err).toBeNull();
+  });
 });
