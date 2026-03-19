@@ -692,6 +692,10 @@ export async function runEmbeddedPiAgent(
             inlineToolResultsAllowed: false,
           });
 
+          console.error(
+            `Embedded success model trace: sessionKey=${params.sessionKey ?? ""} provider=${provider} requestedModel=${modelId} rawResponseModel=${attempt.rawResponseModel ?? ""} lastAssistantModel=${attempt.lastAssistant?.model ?? ""} reportedModel=${agentMeta.model} payloads=${payloads.length}`,
+          );
+
           log.debug(
             `embedded run done: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - started} aborted=${aborted}`,
           );

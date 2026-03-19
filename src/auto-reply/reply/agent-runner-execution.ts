@@ -197,7 +197,7 @@ export async function runAgentTurnWithFallback(params: {
                   throw failover;
                 }
                 console.error(
-                  `Agent fallback candidate success: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} payloads=${result.payloads?.length ?? 0}`,
+                  `Agent fallback candidate success: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} reportedModel=${result.meta?.agentMeta?.model ?? ""} payloads=${result.payloads?.length ?? 0}`,
                 );
                 // CLI backends don't emit streaming assistant events, so we need to
                 // emit one with the final text so server-chat can populate its buffer
