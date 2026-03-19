@@ -69,6 +69,7 @@ export const formatBunFetchSocketError = (message: string) => {
 
 export const formatResponseUsageLine = (params: {
   usage?: NormalizedUsage;
+  model?: string;
   showCost: boolean;
   costConfig?: {
     input: number;
@@ -97,7 +98,17 @@ export const formatResponseUsageLine = (params: {
         })
       : undefined;
   const costLabel = params.showCost ? formatUsd(cost) : undefined;
-  const suffix = costLabel ? ` · est ${costLabel}` : "";
+  const modelLabelRaw = params.model?.trim();
+  const modelLabel = modelLabelRaw
+    ? modelLabelRaw.includes("/")
+      ? modelLabelRaw.slice(modelLabelRaw.lastIndexOf("/") + 1)
+      : modelLabelRaw
+    : undefined;
+  const suffixParts = [
+    modelLabel ? `model ${modelLabel}` : null,
+    costLabel ? `est ${costLabel}` : null,
+  ].filter(Boolean);
+  const suffix = suffixParts.length > 0 ? ` · ${suffixParts.join(" · ")}` : "";
   return `Usage: ${inputLabel} in / ${outputLabel} out${suffix}`;
 };
 

@@ -176,6 +176,62 @@ describe("runReplyAgent response usage footer", () => {
     expect(String(payload?.text ?? "")).not.toContain("· session ");
   });
 
+  it("shows short raw response model in the usage footer", async () => {
+    runEmbeddedPiAgentMock.mockResolvedValueOnce({
+      payloads: [{ text: "ok" }],
+      meta: {
+        agentMeta: {
+          provider: "custom",
+          model: "stepfun/step-3.5-flash",
+          usage: { input: 2014, output: 23 },
+        },
+      },
+    });
+    runWithModelFallbackMock.mockImplementationOnce(
+      async ({ run }: { run: (provider: string, model: string) => Promise<unknown> }) => ({
+        result: await run("custom", "default_combo"),
+        provider: "custom",
+        model: "default_combo",
+      }),
+    );
+
+    const res = await createRun({ responseUsage: "tokens", sessionKey: "agent:test:model-short" });
+    const payload = Array.isArray(res) ? res[0] : res;
+    expect(String(payload?.text ?? "")).toContain("Usage:");
+    expect(String(payload?.text ?? "")).toContain("model step-3.5-flash");
+  });
+
+  it("falls back to the selected model name when raw response model is missing", async () => {
+    runEmbeddedPiAgentMock.mockResolvedValueOnce({
+      payloads: [{ text: "ok" }],
+      meta: {
+        agentMeta: {
+          provider: "custom",
+          model: "free_combo",
+          usage: { input: 12, output: 3 },
+        },
+      },
+    });
+    runWithModelFallbackMock.mockImplementationOnce(
+      async ({ run }: { run: (provider: string, model: string) => Promise<unknown> }) => ({
+        result: await run("custom", "free_combo"),
+        provider: "custom",
+        model: "free_combo",
+      }),
+    );
+
+    const res = await createRun({
+      responseUsage: "tokens",
+      sessionKey: "agent:test:model-fallback",
+      runOverrides: {
+        provider: "custom",
+        model: "default_combo",
+      },
+    });
+    const payload = Array.isArray(res) ? res[0] : res;
+    expect(String(payload?.text ?? "")).toContain("model free_combo");
+  });
+
   it("retries the fallback model when embedded run returns only failover metadata", async () => {
     runEmbeddedPiAgentMock
       .mockResolvedValueOnce({
