@@ -143,7 +143,7 @@ export async function runAgentTurnWithFallback(params: {
           resolveAgentIdFromSessionKey(params.followupRun.run.sessionKey),
         ),
         run: (provider, model) => {
-          defaultRuntime.error?.(
+          console.error(
             `Agent fallback candidate start: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model}`,
           );
           // Notify that model selection is complete (including after fallback).
@@ -191,12 +191,12 @@ export async function runAgentTurnWithFallback(params: {
                   model,
                 });
                 if (failover) {
-                  defaultRuntime.error?.(
+                  console.error(
                     `Agent fallback candidate failover: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} stopReason=${result.meta?.stopReason ?? ""} errorMessage=${result.meta?.errorMessage ?? failover.message}`,
                   );
                   throw failover;
                 }
-                defaultRuntime.error?.(
+                console.error(
                   `Agent fallback candidate success: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} payloads=${result.payloads?.length ?? 0}`,
                 );
                 // CLI backends don't emit streaming assistant events, so we need to
@@ -439,12 +439,12 @@ export async function runAgentTurnWithFallback(params: {
               model,
             });
             if (failover) {
-              defaultRuntime.error?.(
+              console.error(
                 `Agent fallback candidate failover: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} stopReason=${res.meta?.stopReason ?? ""} errorMessage=${res.meta?.errorMessage ?? failover.message} payloads=${res.payloads?.length ?? 0}`,
               );
               throw failover;
             }
-            defaultRuntime.error?.(
+            console.error(
               `Agent fallback candidate success: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} payloads=${res.payloads?.length ?? 0}`,
             );
             return res;
@@ -487,7 +487,7 @@ export async function runAgentTurnWithFallback(params: {
       break;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      defaultRuntime.error?.(
+      console.error(
         `Agent fallback loop failed: sessionKey=${params.sessionKey ?? ""} provider=${fallbackProvider} model=${fallbackModel} message=${message}`,
       );
       const isContextOverflow = isLikelyContextOverflowError(message);
