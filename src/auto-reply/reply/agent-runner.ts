@@ -198,9 +198,6 @@ export async function runReplyAgent(params: {
 
     const providerUsed = followupRun.run.provider;
     const modelUsed = followupRun.run.model;
-    console.error(
-      `Owner alert send: reason=${params.reason ?? "error"} channel=${String(replyToChannel)} owners=${owners.join(",")} sessionKey=${sessionKey ?? ""} model=${providerUsed}/${modelUsed}`,
-    );
     const alertKey = computeOwnerAlertKey({
       text: params.text,
       provider: providerUsed,
@@ -541,9 +538,6 @@ export async function runReplyAgent(params: {
     // Otherwise, a late typing trigger (e.g. from a tool callback) can outlive the run and
     // keep the typing indicator stuck.
     if (payloadArray.length === 0) {
-      console.error(
-        `Agent produced no payloads: sessionKey=${sessionKey ?? ""} stopReason=${runResult.meta?.stopReason ?? ""} errorMessage=${runResult.meta?.errorMessage ?? ""} provider=${providerUsed} model=${modelUsed}`,
-      );
       return finalizeWithFollowup(undefined, queueKey, runFollowupTurn);
     }
 
@@ -573,9 +567,6 @@ export async function runReplyAgent(params: {
     if (shouldSuppressOriginErrors) {
       const errorText = pickOwnerAlertText(replyPayloads);
       if (errorText) {
-        console.error(
-          `Suppressing origin error payloads: sessionKey=${sessionKey ?? ""} provider=${providerUsed} model=${modelUsed} error=${errorText}`,
-        );
         await notifyOwners({
           text: errorText,
           reason: classifyFailoverReason(errorText) ?? "error",

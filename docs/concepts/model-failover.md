@@ -83,6 +83,11 @@ Cooldowns use exponential backoff:
 - 25 minutes
 - 1 hour (cap)
 
+Per-model override:
+- Set `agents.defaults.models["provider/model"].disableCooldowns: true` to completely disable cooldown and billing-disable writes for that model.
+- This is useful for "always try this fallback" models such as a free pool behind a custom router.
+- It only affects that model entry; other models for the same provider keep normal cooldown behavior.
+
 State is stored in `auth-profiles.json` under `usageStats`:
 
 ```json

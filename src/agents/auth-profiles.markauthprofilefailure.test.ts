@@ -128,4 +128,53 @@ describe("markAuthProfileFailure", () => {
       fs.rmSync(agentDir, { recursive: true, force: true });
     }
   });
+
+  it("does not set cooldown or disabled windows when model disableCooldowns is enabled", async () => {
+    const agentDir = fs.mkdtempSync(path.join(os.tmpdir(), "clawdbot-auth-"));
+    try {
+      const authPath = path.join(agentDir, "auth-profiles.json");
+      fs.writeFileSync(
+        authPath,
+        JSON.stringify({
+          version: 1,
+          profiles: {
+            "custom:default": {
+              type: "api_key",
+              provider: "custom",
+              key: "sk-default",
+            },
+          },
+        }),
+      );
+
+      const store = ensureAuthProfileStore(agentDir);
+      await markAuthProfileFailure({
+        store,
+        profileId: "custom:default",
+        reason: "billing",
+        modelId: "free_combo",
+        agentDir,
+        cfg: {
+          agents: {
+            defaults: {
+              models: {
+                "custom/free_combo": {
+                  disableCooldowns: true,
+                },
+              },
+            },
+          },
+        } as never,
+      });
+
+      const stats = store.usageStats?.["custom:default"];
+      expect(stats?.disabledUntil).toBeUndefined();
+      expect(stats?.cooldownUntil).toBeUndefined();
+      expect(stats?.disabledReason).toBeUndefined();
+      expect(stats?.errorCount).toBe(1);
+      expect(stats?.failureCounts?.billing).toBe(1);
+    } finally {
+      fs.rmSync(agentDir, { recursive: true, force: true });
+    }
+  });
 });

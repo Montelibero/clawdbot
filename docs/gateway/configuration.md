@@ -1593,6 +1593,7 @@ Controls the embedded agent runtime (model/thinking/verbose/timeouts).
 Each `agents.defaults.models` entry can include:
 - `alias` (optional model shortcut, e.g. `/opus`).
 - `params` (optional provider-specific API params passed through to the model request).
+- `disableCooldowns` (optional boolean). When `true`, Clawdbot never writes auth-profile cooldown or billing-disable state for that model.
 
 `params` is also applied to streaming runs (embedded agent + compaction). Supported keys today: `temperature`, `maxTokens`. These merge with call-time options; caller-supplied values win. `temperature` is an advanced knob—leave unset unless you know the model’s defaults and need a change.
 
@@ -1608,6 +1609,22 @@ Example:
         },
         "openai/gpt-5.2": {
           params: { maxTokens: 8192 }
+        }
+      }
+    }
+  }
+}
+```
+
+Example for a fallback model that should never be frozen:
+
+```json5
+{
+  agents: {
+    defaults: {
+      models: {
+        "custom/free_combo": {
+          disableCooldowns: true
         }
       }
     }

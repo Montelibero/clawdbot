@@ -143,9 +143,6 @@ export async function runAgentTurnWithFallback(params: {
           resolveAgentIdFromSessionKey(params.followupRun.run.sessionKey),
         ),
         run: (provider, model) => {
-          console.error(
-            `Agent fallback candidate start: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model}`,
-          );
           // Notify that model selection is complete (including after fallback).
           // This allows responsePrefix template interpolation with the actual model.
           params.opts?.onModelSelected?.({
@@ -191,14 +188,8 @@ export async function runAgentTurnWithFallback(params: {
                   model,
                 });
                 if (failover) {
-                  console.error(
-                    `Agent fallback candidate failover: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} stopReason=${result.meta?.stopReason ?? ""} errorMessage=${result.meta?.errorMessage ?? failover.message}`,
-                  );
                   throw failover;
                 }
-                console.error(
-                  `Agent fallback candidate success: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} reportedModel=${result.meta?.agentMeta?.model ?? ""} payloads=${result.payloads?.length ?? 0}`,
-                );
                 // CLI backends don't emit streaming assistant events, so we need to
                 // emit one with the final text so server-chat can populate its buffer
                 // and send the response to TUI/WebSocket clients.
@@ -439,14 +430,8 @@ export async function runAgentTurnWithFallback(params: {
               model,
             });
             if (failover) {
-              console.error(
-                `Agent fallback candidate failover: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} stopReason=${res.meta?.stopReason ?? ""} errorMessage=${res.meta?.errorMessage ?? failover.message} payloads=${res.payloads?.length ?? 0}`,
-              );
               throw failover;
             }
-            console.error(
-              `Agent fallback candidate success: sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${model} payloads=${res.payloads?.length ?? 0}`,
-            );
             return res;
           });
         },
@@ -487,9 +472,6 @@ export async function runAgentTurnWithFallback(params: {
       break;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(
-        `Agent fallback loop failed: sessionKey=${params.sessionKey ?? ""} provider=${fallbackProvider} model=${fallbackModel} message=${message}`,
-      );
       const isContextOverflow = isLikelyContextOverflowError(message);
       const isCompactionFailure = isCompactionFailureError(message);
       const isSessionCorruption = /function call turn comes immediately after/i.test(message);

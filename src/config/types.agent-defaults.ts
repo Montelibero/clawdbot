@@ -16,6 +16,8 @@ export type AgentModelEntryConfig = {
   alias?: string;
   /** Provider-specific API parameters (e.g., GLM-4.7 thinking mode). */
   params?: Record<string, unknown>;
+  /** Never write auth-profile cooldown/disabled state for this model. */
+  disableCooldowns?: boolean;
 };
 
 export type AgentModelListConfig = {

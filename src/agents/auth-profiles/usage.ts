@@ -23,6 +23,26 @@ function resolveProfileUnusableUntil(stats: ProfileUsageStats): number | null {
   return Math.max(...values);
 }
 
+function isModelCooldownDisabled(params: {
+  cfg?: ClawdbotConfig;
+  providerId: string;
+  modelId?: string;
+}): boolean {
+  const modelId = params.modelId?.trim();
+  if (!modelId) return false;
+  const entries = params.cfg?.agents?.defaults?.models;
+  if (!entries) return false;
+  const normalizedProvider = normalizeProviderId(params.providerId);
+  for (const [key, entry] of Object.entries(entries)) {
+    const [providerPart, ...modelParts] = key.split("/");
+    if (!providerPart || modelParts.length === 0) continue;
+    if (normalizeProviderId(providerPart) !== normalizedProvider) continue;
+    if (modelParts.join("/").trim() !== modelId) continue;
+    return entry?.disableCooldowns === true;
+  }
+  return false;
+}
+
 /**
  * Check if a profile is currently in cooldown (due to rate limiting or errors).
  */
@@ -164,6 +184,7 @@ function computeNextProfileUsageStats(params: {
   now: number;
   reason: AuthProfileFailureReason;
   cfgResolved: ResolvedAuthCooldownConfig;
+  disableCooldowns?: boolean;
 }): ProfileUsageStats {
   const windowMs = params.cfgResolved.failureWindowMs;
   const windowExpired =
@@ -182,6 +203,13 @@ function computeNextProfileUsageStats(params: {
     failureCounts,
     lastFailureAt: params.now,
   };
+
+  if (params.disableCooldowns) {
+    updatedStats.cooldownUntil = undefined;
+    updatedStats.disabledUntil = undefined;
+    updatedStats.disabledReason = undefined;
+    return updatedStats;
+  }
 
   if (params.reason === "billing") {
     const billingCount = failureCounts.billing ?? 1;
@@ -228,12 +256,18 @@ export async function markAuthProfileFailure(params: {
         cfg,
         providerId: providerKey,
       });
+      const disableCooldowns = isModelCooldownDisabled({
+        cfg,
+        providerId: profile.provider,
+        modelId,
+      });
 
       freshStore.usageStats[usageKey] = computeNextProfileUsageStats({
         existing,
         now,
         reason,
         cfgResolved,
+        disableCooldowns,
       });
       return true;
     },
@@ -252,12 +286,18 @@ export async function markAuthProfileFailure(params: {
     cfg,
     providerId: providerKey,
   });
+  const disableCooldowns = isModelCooldownDisabled({
+    cfg,
+    providerId: store.profiles[profileId]?.provider ?? "",
+    modelId,
+  });
 
   store.usageStats[usageKey] = computeNextProfileUsageStats({
     existing,
     now,
     reason,
     cfgResolved,
+    disableCooldowns,
   });
   saveAuthProfileStore(store, agentDir);
 }

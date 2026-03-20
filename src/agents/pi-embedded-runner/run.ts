@@ -539,12 +539,7 @@ export async function runEmbeddedPiAgent(
               thinkLevel = fallbackThinking;
               continue;
             }
-            // FIX: Throw FailoverError for prompt errors when fallbacks configured
-            // This enables model fallback for quota/rate limit errors during prompt submission
             if (fallbackAvailable && isFailoverErrorMessage(errorText)) {
-              log.warn(
-                `embedded model failover from prompt error: sessionId=${params.sessionId} sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${modelId} reason=${promptFailoverReason ?? "unknown"} fallbackAvailable=${fallbackAvailable} message=${errorText}`,
-              );
               throw new FailoverError(errorText, {
                 reason: promptFailoverReason ?? "unknown",
                 provider,
@@ -570,7 +565,6 @@ export async function runEmbeddedPiAgent(
 
           const authFailure = isAuthAssistantError(lastAssistant);
           const assistantErrorMessage = lastAssistant?.errorMessage ?? recoveredErrorMessage;
-          const assistantStopReason = lastAssistant?.stopReason ?? recoveredStopReason;
           const assistantFailoverReason = classifyFailoverReason(assistantErrorMessage ?? "");
           const assistantFailoverMessage = isFailoverErrorMessage(assistantErrorMessage ?? "");
           const rateLimitFailure =
@@ -654,9 +648,6 @@ export async function runEmbeddedPiAgent(
               const status =
                 resolveFailoverStatus(assistantFailoverReason ?? "unknown") ??
                 (isTimeoutErrorMessage(message) ? 408 : undefined);
-              log.warn(
-                `embedded model failover from assistant error: sessionId=${params.sessionId} sessionKey=${params.sessionKey ?? ""} provider=${provider} model=${modelId} reason=${assistantFailoverReason ?? "unknown"} stopReason=${assistantStopReason ?? ""} timedOut=${timedOut} fallbackAvailable=${fallbackAvailable} message=${message}`,
-              );
               throw new FailoverError(message, {
                 reason: assistantFailoverReason ?? "unknown",
                 provider,
@@ -691,10 +682,6 @@ export async function runEmbeddedPiAgent(
             toolResultFormat: resolvedToolResultFormat,
             inlineToolResultsAllowed: false,
           });
-
-          console.error(
-            `Embedded success model trace: sessionKey=${params.sessionKey ?? ""} provider=${provider} requestedModel=${modelId} rawResponseModel=${attempt.rawResponseModel ?? ""} lastAssistantModel=${attempt.lastAssistant?.model ?? ""} reportedModel=${agentMeta.model} payloads=${payloads.length}`,
-          );
 
           log.debug(
             `embedded run done: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - started} aborted=${aborted}`,
